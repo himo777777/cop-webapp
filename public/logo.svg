@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48">
+  <defs>
+    <linearGradient id="logoBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Icon mark: rounded square with grid + pulse -->
+  <rect x="4" y="4" width="40" height="40" rx="9" fill="url(#logoBg)"/>
+
+  <!-- Calendar grid cells -->
+  <rect x="10" y="10" width="10" height="10" rx="2" fill="#3b82f6" opacity="0.25"/>
+  <rect x="22" y="10" width="10" height="10" rx="2" fill="#3b82f6" opacity="0.15"/>
+  <rect x="10" y="22" width="10" height="10" rx="2" fill="#3b82f6" opacity="0.15"/>
+  <rect x="22" y="22" width="10" height="10" rx="2" fill="#3b82f6" opacity="0.25"/>
+
+  <!-- Pulse / heartbeat line across center -->
+  <polyline points="8,24 16,24 18.5,15 22,33 24.5,24 40,24"
+    stroke="#3b82f6" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Small medical cross in top-left cell -->
+  <line x1="15" y1="12.5" x2="15" y2="17.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>
+  <line x1="12.5" y1="15" x2="17.5" y2="15" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- "COP" wordmark -->
+  <text x="56" y="33" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+    font-size="28" font-weight="700" letter-spacing="-0.5" fill="#0f172a">COP</text>
+
+  <!-- Tagline -->
+  <text x="57" y="44" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+    font-size="7" font-weight="500" letter-spacing="2.5" fill="#64748b" text-transform="uppercase">CLINICAL OPS</text>
+</svg>
