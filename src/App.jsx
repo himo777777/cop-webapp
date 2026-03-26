@@ -7,6 +7,9 @@ import SchedulePage from "./pages/SchedulePage";
 import DashboardPage from "./pages/DashboardPage";
 import AbsencePage from "./pages/AbsencePage";
 import AdminPage from "./pages/AdminPage";
+import AIRulesPage from "./pages/AIRulesPage";
+import AIChatPage from "./pages/AIChatPage";
+import AIPredictionsPage from "./pages/AIPredictionsPage";
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -19,6 +22,9 @@ function AppContent() {
     dashboard: <DashboardPage />,
     absence: <AbsencePage />,
     admin: <AdminPage />,
+    "ai-rules": <AIRulesPage />,
+    "ai-chat": <AIChatPage />,
+    "ai-predict": <AIPredictionsPage />,
   };
 
   return (

@@ -4,13 +4,17 @@ import { useClinic } from "../context/ClinicContext";
 import { useWebSocket } from "../hooks/useWebSocket";
 import {
   CalendarDays, LayoutDashboard, UserX, Settings, LogOut,
-  ChevronLeft, ChevronRight, Menu, X, Zap, Building2
+  ChevronLeft, ChevronRight, Menu, X, Zap, Building2,
+  Sparkles, MessageCircle, TrendingUp
 } from "lucide-react";
 
 const NAV = [
   { id: "schedule", label: "Schema", icon: CalendarDays },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "absence", label: "Frånvaro", icon: UserX },
+  { id: "absence", label: "Franvaro", icon: UserX },
+  { id: "ai-rules", label: "AI-regler", icon: Sparkles },
+  { id: "ai-chat", label: "Schema-chatt", icon: MessageCircle },
+  { id: "ai-predict", label: "Prediktioner", icon: TrendingUp },
   { id: "admin", label: "Administration", icon: Settings, adminOnly: true },
 ];
 

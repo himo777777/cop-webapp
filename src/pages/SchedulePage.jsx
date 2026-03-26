@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useClinic } from "../context/ClinicContext";
+import { explainShift } from "../api/ai";
 import {
   ChevronLeft, ChevronRight, Plus, Filter, Download, FileText,
-  Loader2, AlertTriangle, Check, CalendarRange, Settings2, Clock
+  Loader2, AlertTriangle, Check, CalendarRange, Settings2, Clock,
+  X, HelpCircle, CheckCircle2, XCircle
 } from "lucide-react";
 
 /* ── Function color system — auto-generated from function prefixes ── */
@@ -43,7 +45,7 @@ const ROLES = {
 const WEEKDAYS = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
 
 /* ── Cell component ───────────────────────────────────────────────── */
-function Cell({ func, draggable, onDragStart, onDragOver, onDrop, onDragEnd, isDragging, isOver }) {
+function Cell({ func, draggable, onDragStart, onDragOver, onDrop, onDragEnd, isDragging, isOver, onClick }) {
   const f = getFuncStyle(func);
   const isEmpty = func === "LEDIG";
   return (
@@ -53,8 +55,9 @@ function Cell({ func, draggable, onDragStart, onDragOver, onDrop, onDragEnd, isD
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
+      onClick={onClick}
       className={`
-        schedule-cell rounded-[5px] px-1 py-[5px] text-[10px] font-semibold text-center select-none leading-none
+        schedule-cell rounded-[5px] px-1 py-[5px] text-[10px] font-semibold text-center select-none leading-none cursor-pointer
         ${isEmpty ? "opacity-30" : ""}
         ${isDragging ? "opacity-40 scale-90" : ""}
         ${isOver ? "drag-over" : ""}
@@ -80,6 +83,7 @@ export default function SchedulePage() {
   const [toast, setToast] = useState(null);
   const [dragSrc, setDragSrc] = useState(null);
   const [dropTgt, setDropTgt] = useState(null);
+  const [explain, setExplain] = useState(null); // {loading, data, docId, date}
   const [showGenDialog, setShowGenDialog] = useState(false);
   const [genWeeks, setGenWeeks] = useState(2);
   const [genTimeLimit, setGenTimeLimit] = useState(30);
@@ -236,6 +240,17 @@ export default function SchedulePage() {
   const showToast = (text, warnings = [], isError = false) => {
     setToast({ text, warnings, isError });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  /* ── Explain shift ─── */
+  const handleExplain = async (docId, dateStr) => {
+    setExplain({ loading: true, data: null, docId, date: dateStr });
+    try {
+      const data = await explainShift(api, selectedId, docId, dateStr);
+      setExplain({ loading: false, data, docId, date: dateStr });
+    } catch (e) {
+      setExplain({ loading: false, data: { error: e.message }, docId, date: dateStr });
+    }
   };
 
   /* ── Export ─── */
@@ -473,6 +488,12 @@ export default function SchedulePage() {
                               onDragOver={onDragOver(row.doc.id, ci)}
                               onDrop={onDrop(row.doc.id, ci)}
                               onDragEnd={onDragEnd}
+                              onClick={() => {
+                                if (func !== "LEDIG" && selectedId) {
+                                  const dateStr = weekData.dates[ci]?.toISOString().split("T")[0];
+                                  handleExplain(row.doc.id, dateStr);
+                                }
+                              }}
                             />
                           </td>
                         );
@@ -521,8 +542,53 @@ export default function SchedulePage() {
             return <span key={key} className="text-[9px] font-semibold px-2 py-[3px] rounded" style={{ background: f.bg, color: f.fg }}>{f.label}</span>;
           });
         })()}
-        <span className="text-[9px] text-slate-400 ml-2 self-center">Dra en cell till en annan läkare samma dag för att byta pass</span>
+        <span className="text-[9px] text-slate-400 ml-2 self-center">Klicka pa en cell for forklaring. Dra for att byta pass.</span>
       </div>
+
+      {/* Explain modal */}
+      {explain && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setExplain(null)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+              <h3 className="text-[14px] font-semibold text-slate-800 flex items-center gap-2">
+                <HelpCircle size={16} className="text-violet-500" /> Forklaring
+              </h3>
+              <button onClick={() => setExplain(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="text-[11px] text-slate-400">{explain.docId} | {explain.date}</div>
+            {explain.loading ? (
+              <div className="py-8 text-center"><Loader2 size={24} className="animate-spin text-violet-500 mx-auto" /></div>
+            ) : explain.data?.error ? (
+              <div className="text-[13px] text-red-600">{explain.data.error}</div>
+            ) : (
+              <>
+                <p className="text-[13px] text-slate-700">{explain.data?.explanation_sv}</p>
+                {explain.data?.constraints_applied?.length > 0 && (
+                  <div>
+                    <h4 className="text-[11px] font-semibold text-slate-500 mb-1">Tillampade regler</h4>
+                    {explain.data.constraints_applied.map((c, i) => (
+                      <div key={i} className="text-[12px] text-emerald-600 flex items-center gap-1.5">
+                        <CheckCircle2 size={12} /> {c}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {explain.data?.alternatives_considered?.length > 0 && (
+                  <div>
+                    <h4 className="text-[11px] font-semibold text-slate-500 mb-1">Forkastade alternativ</h4>
+                    {explain.data.alternatives_considered.map((a, i) => (
+                      <div key={i} className="text-[12px] text-red-500 flex items-start gap-1.5">
+                        <XCircle size={12} className="mt-0.5 shrink-0" />
+                        <span>{a.doctor}: {a.reason_rejected}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
