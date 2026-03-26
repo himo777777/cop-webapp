@@ -5,13 +5,16 @@ import { useWebSocket } from "../hooks/useWebSocket";
 import {
   CalendarDays, LayoutDashboard, UserX, Settings, LogOut,
   ChevronLeft, ChevronRight, Menu, X, Zap, Building2,
-  Sparkles, MessageCircle, TrendingUp
+  Sparkles, MessageCircle, TrendingUp, ArrowLeftRight, CalendarHeart, Scale
 } from "lucide-react";
 
 const NAV = [
   { id: "schedule", label: "Schema", icon: CalendarDays },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "absence", label: "Franvaro", icon: UserX },
+  { id: "swaps", label: "Bytestavla", icon: ArrowLeftRight },
+  { id: "wishes", label: "Onskemol", icon: CalendarHeart },
+  { id: "fairness", label: "Rattvisa", icon: Scale },
   { id: "ai-rules", label: "AI-regler", icon: Sparkles },
   { id: "ai-chat", label: "Schema-chatt", icon: MessageCircle },
   { id: "ai-predict", label: "Prediktioner", icon: TrendingUp },

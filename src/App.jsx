@@ -10,6 +10,9 @@ import AdminPage from "./pages/AdminPage";
 import AIRulesPage from "./pages/AIRulesPage";
 import AIChatPage from "./pages/AIChatPage";
 import AIPredictionsPage from "./pages/AIPredictionsPage";
+import SwapsPage from "./pages/SwapsPage";
+import WishesPage from "./pages/WishesPage";
+import FairnessPage from "./pages/FairnessPage";
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -25,6 +28,9 @@ function AppContent() {
     "ai-rules": <AIRulesPage />,
     "ai-chat": <AIChatPage />,
     "ai-predict": <AIPredictionsPage />,
+    swaps: <SwapsPage />,
+    wishes: <WishesPage />,
+    fairness: <FairnessPage />,
   };
 
   return (

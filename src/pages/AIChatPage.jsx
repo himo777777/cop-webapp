@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useClinic } from "../context/ClinicContext";
 import { chatMessage } from "../api/ai";
-import { Send, Loader2, Bot, User, Sparkles } from "lucide-react";
+import { Send, Loader2, Bot, User, Sparkles, CheckCircle } from "lucide-react";
 
 const QUICK_ACTIONS = [
   "Vem jobbar idag?",
