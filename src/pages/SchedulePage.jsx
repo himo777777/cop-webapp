@@ -5,7 +5,7 @@ import { explainShift } from "../api/ai";
 import {
   ChevronLeft, ChevronRight, Plus, Filter, Download, FileText,
   Loader2, AlertTriangle, Check, CalendarRange, Settings2, Clock,
-  X, HelpCircle, CheckCircle2, XCircle
+  X, HelpCircle, CheckCircle2, XCircle, RefreshCw
 } from "lucide-react";
 
 /* ── Function color system — auto-generated from function prefixes ── */
@@ -88,6 +88,7 @@ export default function SchedulePage() {
   const [genWeeks, setGenWeeks] = useState(2);
   const [genTimeLimit, setGenTimeLimit] = useState(30);
   const [genProgress, setGenProgress] = useState(null); // { jobId, elapsed }
+  const [reoptimizing, setReoptimizing] = useState(false);
 
   // Load schedules when clinic changes
   useEffect(() => {
@@ -203,6 +204,54 @@ export default function SchedulePage() {
       };
       setTimeout(poll, 1500);
     } catch (e) { setError(e.message); setGenerating(false); setGenProgress(null); }
+  };
+
+  /* ── Reoptimize with job polling ─── */
+  const reoptimize = async () => {
+    setReoptimizing(true); setError(null);
+    const startTime = Date.now();
+    try {
+      const res = await api("/schedule/reoptimize", {
+        method: "POST",
+        body: JSON.stringify({ schedule_id: selectedId, time_limit_seconds: 30 }),
+      });
+
+      // If schedule returned directly (sync solve)
+      if (res.schedule_id && res.schedule) {
+        setSelectedId(res.schedule_id);
+        setSchedules(await api("/schedules"));
+        setReoptimizing(false);
+        return;
+      }
+
+      // Async solve — poll job status
+      const jobId = res.job_id;
+      const scheduleId = res.schedule_id;
+      if (!jobId) { setSelectedId(scheduleId); setSchedules(await api("/schedules")); setReoptimizing(false); return; }
+
+      const poll = async () => {
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        setGenProgress({ jobId, elapsed });
+        try {
+          const job = await api(`/job/${jobId}`);
+          if (job.status === "completed") {
+            setGenProgress(null);
+            setSelectedId(scheduleId || job.schedule_id);
+            setSchedules(await api("/schedules"));
+            setReoptimizing(false);
+          } else if (job.status === "failed" || job.status === "infeasible") {
+            setGenProgress(null);
+            setError(job.error || `Schema ${job.status}`);
+            setReoptimizing(false);
+          } else {
+            setTimeout(poll, 2000);
+          }
+        } catch (e) {
+          setGenProgress(null); setError(e.message); setReoptimizing(false);
+        }
+      };
+      setTimeout(poll, 1500);
+    } catch (e) { setError(e.message); setReoptimizing(false); setGenProgress(null); }
   };
 
   /* ── Drag & drop swap ─── */
@@ -355,6 +404,11 @@ export default function SchedulePage() {
 
           {schedule && (
             <>
+              <button onClick={reoptimize} disabled={reoptimizing}
+                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium text-violet-600 bg-white border border-violet-200 rounded-lg hover:bg-violet-50 hover:border-violet-300 disabled:opacity-50 transition-colors">
+                {reoptimizing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                {reoptimizing ? "Reoptimerar..." : "Reoptimera"}
+              </button>
               <button onClick={exportSchedule}
                 className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors">
                 <Download size={13} /> Excel

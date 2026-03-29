@@ -55,6 +55,8 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [todaySchedule, setTodaySchedule] = useState(null);
+  const [todayLoading, setTodayLoading] = useState(false);
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -62,6 +64,24 @@ export default function DashboardPage() {
       api("/statistics").then(setStats).catch(() => setStats(null)),
       api("/health").then(setHealth).catch(() => setHealth(null)),
     ]).finally(() => setLoading(false));
+    loadTodaySchedule();
+  }, [api]);
+
+  const loadTodaySchedule = useCallback(async () => {
+    setTodayLoading(true);
+    try {
+      const schedules = await api("/schedules");
+      if (schedules.length > 0) {
+        const schedule = await api(`/schedule/${schedules[0].schedule_id}`);
+        setTodaySchedule(schedule);
+      } else {
+        setTodaySchedule(null);
+      }
+    } catch {
+      setTodaySchedule(null);
+    } finally {
+      setTodayLoading(false);
+    }
   }, [api]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -89,6 +109,42 @@ export default function DashboardPage() {
       .slice(0, 15);
   }, [stats]);
 
+  const todayStaffing = useMemo(() => {
+    if (!todaySchedule?.schedule || !config?.doctors) return null;
+    const today = new Date().toISOString().split("T")[0];
+    const doctorMap = {};
+    config.doctors.forEach(d => { doctorMap[d.id] = d; });
+
+    const assignments = [];
+    const functionCounts = {};
+    const functionDetails = {};
+
+    Object.entries(todaySchedule.schedule).forEach(([docId, dayMap]) => {
+      const func = dayMap[today];
+      if (func && func !== "LEDIG" && func !== "SEMESTER") {
+        const doc = doctorMap[docId];
+        if (doc) {
+          assignments.push({ docName: doc.name, role: doc.role, func });
+          const prefix = func.split("_")[0];
+          functionCounts[prefix] = (functionCounts[prefix] || 0) + 1;
+          if (!functionDetails[prefix]) functionDetails[prefix] = [];
+          functionDetails[prefix].push(doc.name);
+        }
+      }
+    });
+
+    const idle = [];
+    Object.entries(todaySchedule.schedule).forEach(([docId, dayMap]) => {
+      const func = dayMap[today];
+      if (func === "LEDIG") {
+        const doc = doctorMap[docId];
+        if (doc) idle.push(doc.name);
+      }
+    });
+
+    return { assignments, functionCounts, functionDetails, idle };
+  }, [todaySchedule, config]);
+
   const violations = stats?.atl_violations?.length || 0;
 
   return (
@@ -108,6 +164,70 @@ export default function DashboardPage() {
         <Metric icon={Clock} label="Uptime" value={health ? `${Math.round(health.uptime_seconds / 60)}m` : "–"} sub="Senaste omstart" variant="neutral" />
         <Metric icon={TrendingUp} label="Scheman" value={health?.schedules_generated || 0} sub="Genererade totalt" variant="accent" />
       </div>
+
+      {/* Dagens beläggning */}
+      {todaySchedule && todayStaffing && (
+        <div className="card p-5 space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-[13px] font-semibold text-slate-700">Dagens beläggning ({new Date().toLocaleDateString("sv-SE")})</h3>
+            <button onClick={loadTodaySchedule} disabled={todayLoading}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-slate-500 hover:text-slate-700 transition-colors">
+              <RefreshCw size={12} className={todayLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
+
+          {/* Function badges */}
+          {Object.keys(todayStaffing.functionCounts).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(todayStaffing.functionCounts).sort((a, b) => b[1] - a[1]).map(([func, count]) => (
+                <span key={func} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-full text-[11px] font-semibold text-blue-700">
+                  {func} <span className="bg-blue-200 text-blue-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px]">{count}</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Staffing table */}
+          {todayStaffing.assignments.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12px]">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-0 py-2">Läkare</th>
+                    <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 py-2">Roll</th>
+                    <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 py-2">Funktion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {todayStaffing.assignments.map((a, i) => (
+                    <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50">
+                      <td className="px-0 py-2 font-medium text-slate-700">{a.docName}</td>
+                      <td className="px-3 py-2 text-slate-600">{a.role}</td>
+                      <td className="px-3 py-2"><span className="inline-block px-2 py-1 bg-slate-100 text-slate-700 rounded text-[11px] font-medium">{a.func}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-[12px] text-slate-400">Ingen bemanning idag</p>
+            </div>
+          )}
+
+          {/* Idle section */}
+          {todayStaffing.idle.length > 0 && (
+            <div className="border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Lediga idag</p>
+              <div className="flex flex-wrap gap-2">
+                {todayStaffing.idle.map((name, i) => (
+                  <span key={i} className="text-[11px] px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full">{name}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-4">
