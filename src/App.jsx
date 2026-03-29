@@ -13,6 +13,7 @@ import AIPredictionsPage from "./pages/AIPredictionsPage";
 import SwapsPage from "./pages/SwapsPage";
 import WishesPage from "./pages/WishesPage";
 import FairnessPage from "./pages/FairnessPage";
+import ReportsPage from "./pages/ReportsPage";
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -31,6 +32,7 @@ function AppContent() {
     swaps: <SwapsPage />,
     wishes: <WishesPage />,
     fairness: <FairnessPage />,
+    reports: <ReportsPage />,
   };
 
   return (

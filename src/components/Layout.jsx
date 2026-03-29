@@ -6,7 +6,7 @@ import {
   CalendarDays, LayoutDashboard, UserX, Settings, LogOut,
   ChevronLeft, ChevronRight, Menu, X, Zap, Building2,
   Sparkles, MessageCircle, TrendingUp, ArrowLeftRight, CalendarHeart, Scale,
-  Bell, CheckCheck
+  Bell, CheckCheck, FileBarChart
 } from "lucide-react";
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { id: "swaps", label: "Bytestavla", icon: ArrowLeftRight },
   { id: "wishes", label: "Onskemol", icon: CalendarHeart },
   { id: "fairness", label: "Rattvisa", icon: Scale },
+  { id: "reports", label: "Rapporter", icon: FileBarChart },
   { id: "ai-rules", label: "AI-regler", icon: Sparkles },
   { id: "ai-chat", label: "Schema-chatt", icon: MessageCircle },
   { id: "ai-predict", label: "Prediktioner", icon: TrendingUp },
