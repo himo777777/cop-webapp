@@ -80,9 +80,11 @@ export default function OnboardingPage() {
         setFinalConfig(res.final_config || res.config_so_far);
       }
     } catch (err) {
+      const errMsg = err?.message || "Okänt fel";
       setMessages([...newMessages, {
         role: "assistant",
-        content: "Något gick fel. Försök igen eller omformulera ditt svar.",
+        content: `Något gick fel: ${errMsg}. Försök igen eller omformulera ditt svar.`,
+        isError: true,
       }]);
     }
     setLoading(false);
@@ -97,7 +99,11 @@ export default function OnboardingPage() {
       });
       setFinalConfig(config);
     } catch (err) {
-      console.error("Generate failed:", err);
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: `Kunde inte generera konfiguration: ${err?.message || "okänt fel"}`,
+        isError: true,
+      }]);
     }
     setLoading(false);
   };
@@ -115,7 +121,11 @@ export default function OnboardingPage() {
       setSaved(true);
       switchClinic(clinicId);
     } catch (err) {
-      console.error("Save failed:", err);
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: `Kunde inte spara kliniken: ${err?.message || "okänt fel"}`,
+        isError: true,
+      }]);
     }
     setSaving(false);
   };
@@ -164,7 +174,9 @@ export default function OnboardingPage() {
               <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${
                 msg.role === "user"
                   ? "bg-blue-600 text-white"
-                  : "bg-slate-100 text-slate-700"
+                  : msg.isError
+                    ? "bg-red-50 text-red-700 border border-red-200"
+                    : "bg-slate-100 text-slate-700"
               }`}>
                 {msg.content.split("\n").map((line, j) => (
                   <p key={j} className={j > 0 ? "mt-1.5" : ""}>{line}</p>

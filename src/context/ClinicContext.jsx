@@ -35,7 +35,7 @@ export function ClinicProvider({ children }) {
   // Helper: get function options for dropdowns (day functions + ledig)
   const getFunctionOptions = useCallback((includeEmpty = true) => {
     if (!uiConfig) return [];
-    const opts = includeEmpty ? [{ value: "", label: "-- Valj funktion --" }] : [];
+    const opts = includeEmpty ? [{ value: "", label: "-- Välj funktion --" }] : [];
     return [...opts, ...uiConfig.day_functions.map(f => ({ value: f.value, label: f.label }))];
   }, [uiConfig]);
 
