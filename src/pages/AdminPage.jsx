@@ -12,7 +12,7 @@ const inputClass = "w-full text-[13px] border border-slate-200 rounded-lg px-3 p
 const DOCTOR_ROLES = [
   { value: "ÖL", label: "Överläkare" }, { value: "SP", label: "Specialist" },
   { value: "ST_SEN", label: "ST (senior)" }, { value: "ST_TIDIG", label: "ST (tidig)" },
-  { value: "UL", label: "Underläkare" },
+  { value: "AT", label: "AT-läkare" }, { value: "UL", label: "Underläkare" },
 ];
 const USER_ROLES = [
   { value: "admin", label: "Administratör" }, { value: "scheduler", label: "Schemaläggare" },

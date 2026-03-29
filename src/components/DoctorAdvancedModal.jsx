@@ -59,6 +59,39 @@ function SectionHeader({ icon: Icon, title }) {
   );
 }
 
+// AT-rotation template presets
+const AT_ROTATION_TEMPLATES = [
+  { label: "Standard (1 trauma, 2 akut, 1 mott, 1 avd)", days: { monday: "AKUT_CSK", tuesday: "AKUT_CSK", wednesday: "MOTT_CSK", thursday: "AVD_CSK", friday: "AKUT_CSK" } },
+  { label: "Trauma-fokus (2 trauma, 2 akut, 1 mott)", days: { monday: "AKUT_CSK", tuesday: "AKUT_CSK", wednesday: "MOTT_CSK", thursday: "AKUT_CSK", friday: "AKUT_CSK" } },
+  { label: "Anpassad (välj själv)", days: null },
+];
+
+// AT weekly function options — more specific for AT rotation
+const AT_FUNC_OPTIONS = [
+  { value: "",                label: "— Välj —" },
+  { value: "AKUT_CSK",       label: "Akutmottagning" },
+  { value: "TRAUMA",         label: "Traumamottagning" },
+  { value: "MOTT_CSK",       label: "Mottagning" },
+  { value: "AVD_CSK",        label: "Avdelning" },
+  { value: "OP_CSK",         label: "OP (assistera)" },
+  { value: "GIPS",           label: "Gips/Ortopedmottagning" },
+  { value: "HANDLEDNING",    label: "Handledning" },
+  { value: "UTBILDNING",     label: "Utbildning/Föreläsning" },
+];
+
+// ST randning types
+const RANDNING_KLINIKER = [
+  "Handkirurgi SUS",
+  "Ryggkirurgi SUS",
+  "Barnortopedi SUS",
+  "Tumörortopedi SUS",
+  "Idrottsmedicin",
+  "Rehab/Smärta",
+  "Reumatologi",
+  "Radiologi",
+  "Annan klinik",
+];
+
 const COMPETENCY_OPTIONS = [
   { value: "trauma", label: "Trauma" },
   { value: "hoft", label: "Hoft/Proteskirurgi" },
@@ -86,6 +119,14 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
     recurring_activities:   doctor.recurring_activities   || [],
     current_rotation_block: doctor.current_rotation_block || {},
     competencies:           doctor.competencies           || [],
+    // AT rotation — weekly assignment template
+    at_weekly_rotation:     doctor.at_weekly_rotation     || {},
+    at_rotation_period:     doctor.at_rotation_period     || { start_date: "", end_date: "", supervisor_id: "" },
+    // ST randning + OP-krav
+    st_randning:            doctor.st_randning            || [],
+    st_min_op_days:         doctor.st_min_op_days         ?? "",
+    st_required_op_types:   doctor.st_required_op_types   || [],
+    st_target_procedures:   doctor.st_target_procedures   || {},
   });
 
   // --- Fixed weekdays helpers ---
@@ -123,6 +164,13 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
     const patch = {
       ...form,
       work_days_per_week: form.work_days_per_week === "" ? null : parseInt(form.work_days_per_week),
+      st_min_op_days: form.st_min_op_days === "" ? null : parseInt(form.st_min_op_days),
+      // Clean empty randning entries
+      st_randning: form.st_randning.filter(r => r.klinik && r.start_date),
+      // Clean empty procedure targets
+      st_target_procedures: Object.fromEntries(
+        Object.entries(form.st_target_procedures).filter(([_, v]) => v.goal || v.done)
+      ),
     };
     onSave(doctor.id, patch);
     onClose();
@@ -328,39 +376,194 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
             )}
           </div>
 
-          {/* 7. AT-block (visa om roll är AT) */}
-          {doctor.role === "AT" && (
+          {/* 7. AT-läkare: Veckorotationsschema */}
+          {(doctor.role === "AT" || doctor.role === "UL") && (
             <div className={section}>
-              <SectionHeader icon={AlignLeft} title="AT-block rotation" />
-              <div className="grid grid-cols-3 gap-3">
+              <SectionHeader icon={AlignLeft} title="AT-rotation — Veckoschema" />
+              <p className="text-[11px] text-slate-500">
+                Konfigurera vilken funktion AT-läkaren ska ha varje dag i veckan. T.ex. 1 dag trauma, 2 dagar akut, 1 dag mottagning.
+              </p>
+
+              {/* Quick template */}
+              <div>
+                <label className={label}>Snabbmall</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {AT_ROTATION_TEMPLATES.map((tmpl, i) => (
+                    <button key={i}
+                      onClick={() => { if (tmpl.days) setForm(f => ({ ...f, at_weekly_rotation: { ...tmpl.days } })); }}
+                      className="px-2.5 py-1 text-[10px] rounded-lg border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                    >
+                      {tmpl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Per-day assignment */}
+              <div className="space-y-2">
+                {WEEKDAYS.map(({ value: wd, label: wdLabel }) => (
+                  <div key={wd} className="flex items-center gap-3">
+                    <span className="text-[12px] text-slate-600 w-20 font-medium">{wdLabel}</span>
+                    <select
+                      value={form.at_weekly_rotation[wd] || ""}
+                      onChange={e => setForm(f => ({ ...f, at_weekly_rotation: { ...f.at_weekly_rotation, [wd]: e.target.value || undefined } }))}
+                      className={`${input} flex-1`}
+                    >
+                      {AT_FUNC_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+
+              {/* AT period + handledare */}
+              <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
-                  <label className={label}>Blocktyp (funktion)</label>
-                  <select
-                    value={form.current_rotation_block.block_type || ""}
-                    onChange={e => setForm(f => ({ ...f, current_rotation_block: { ...f.current_rotation_block, block_type: e.target.value } }))}
-                    className={input}
-                  >
-                    {FUNC_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <label className={label}>Placeringsstart</label>
+                  <input type="date" value={form.at_rotation_period.start_date || ""}
+                    onChange={e => setForm(f => ({ ...f, at_rotation_period: { ...f.at_rotation_period, start_date: e.target.value } }))}
+                    className={input} />
                 </div>
                 <div>
-                  <label className={label}>Startdatum</label>
-                  <input
-                    type="date"
-                    value={form.current_rotation_block.start_date || ""}
-                    onChange={e => setForm(f => ({ ...f, current_rotation_block: { ...f.current_rotation_block, start_date: e.target.value } }))}
-                    className={input}
-                  />
+                  <label className={label}>Placeringslut</label>
+                  <input type="date" value={form.at_rotation_period.end_date || ""}
+                    onChange={e => setForm(f => ({ ...f, at_rotation_period: { ...f.at_rotation_period, end_date: e.target.value } }))}
+                    className={input} />
                 </div>
                 <div>
-                  <label className={label}>Slutdatum</label>
-                  <input
-                    type="date"
-                    value={form.current_rotation_block.end_date || ""}
-                    onChange={e => setForm(f => ({ ...f, current_rotation_block: { ...f.current_rotation_block, end_date: e.target.value } }))}
-                    className={input}
-                  />
+                  <label className={label}>Handledare (ID)</label>
+                  <input value={form.at_rotation_period.supervisor_id || ""}
+                    onChange={e => setForm(f => ({ ...f, at_rotation_period: { ...f.at_rotation_period, supervisor_id: e.target.value } }))}
+                    className={input} placeholder="t.ex. SP3" />
                 </div>
+              </div>
+
+              {/* Summary */}
+              {Object.values(form.at_weekly_rotation).filter(Boolean).length > 0 && (
+                <div className="bg-blue-50 rounded-lg p-2.5 text-[11px] text-blue-700 space-y-0.5">
+                  <p className="font-semibold">Veckans fördelning:</p>
+                  {(() => {
+                    const counts = {};
+                    Object.values(form.at_weekly_rotation).filter(Boolean).forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+                    return Object.entries(counts).map(([fn, c]) => (
+                      <p key={fn}>{fn.replace(/_/g, " ")}: {c} dag{c > 1 ? "ar" : ""}</p>
+                    ));
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 8. ST-läkare: Randning + OP-krav */}
+          {(doctor.role === "ST_SEN" || doctor.role === "ST_TIDIG") && (
+            <div className={section}>
+              <SectionHeader icon={Activity} title="ST-utbildning — Randning och OP-krav" />
+
+              {/* Randningar */}
+              <div className="space-y-2">
+                <p className="text-[11px] text-slate-500">
+                  Randningsperioder: ST-läkaren är borta på annan klinik och ska inte schemaläggas här under dessa perioder.
+                </p>
+                {form.st_randning.map((r, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_110px_110px_28px] gap-2 items-center bg-slate-50 px-3 py-2 rounded-lg">
+                    <select value={r.klinik || ""} onChange={e => {
+                      const upd = [...form.st_randning];
+                      upd[i] = { ...upd[i], klinik: e.target.value };
+                      setForm(f => ({ ...f, st_randning: upd }));
+                    }} className={input}>
+                      <option value="">— Välj klinik —</option>
+                      {RANDNING_KLINIKER.map(k => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                    <input type="date" value={r.start_date || ""} onChange={e => {
+                      const upd = [...form.st_randning];
+                      upd[i] = { ...upd[i], start_date: e.target.value };
+                      setForm(f => ({ ...f, st_randning: upd }));
+                    }} className={input} />
+                    <input type="date" value={r.end_date || ""} onChange={e => {
+                      const upd = [...form.st_randning];
+                      upd[i] = { ...upd[i], end_date: e.target.value };
+                      setForm(f => ({ ...f, st_randning: upd }));
+                    }} className={input} />
+                    <button onClick={() => setForm(f => ({ ...f, st_randning: f.st_randning.filter((_, j) => j !== i) }))}
+                      className="text-slate-300 hover:text-red-500"><Trash2 size={13} /></button>
+                  </div>
+                ))}
+                <button onClick={() => setForm(f => ({ ...f, st_randning: [...f.st_randning, { klinik: "", start_date: "", end_date: "" }] }))}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-slate-300 rounded-lg text-[12px] text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                  <Plus size={12} /> Lägg till randningsperiod
+                </button>
+              </div>
+
+              {/* OP-krav */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <p className="text-[11px] font-medium text-slate-700">OP-krav per vecka</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={label}>Minsta antal OP-dagar / vecka</label>
+                    <input type="number" min="0" max="5" value={form.st_min_op_days}
+                      onChange={e => setForm(f => ({ ...f, st_min_op_days: e.target.value }))}
+                      className={input} placeholder="t.ex. 2" />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Solvern garanterar minst detta antal OP-pass per vecka</p>
+                  </div>
+                  <div>
+                    <label className={label}>Krävda OP-typer</label>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {["hoft", "kna", "axel", "hand", "rygg", "trauma", "artroskopi", "barn"].map(op => {
+                        const selected = form.st_required_op_types.includes(op);
+                        return (
+                          <button key={op}
+                            onClick={() => setForm(f => ({
+                              ...f,
+                              st_required_op_types: selected
+                                ? f.st_required_op_types.filter(x => x !== op)
+                                : [...f.st_required_op_types, op]
+                            }))}
+                            className={`px-2 py-1 text-[10px] rounded-lg border transition-colors ${
+                              selected ? "bg-violet-50 border-violet-300 text-violet-700 font-semibold" : "border-slate-200 text-slate-500 hover:border-slate-300"
+                            }`}
+                          >
+                            {op.charAt(0).toUpperCase() + op.slice(1)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Procedure target tracking */}
+              <div className="space-y-2 pt-3 border-t border-slate-100">
+                <p className="text-[11px] font-medium text-slate-700">Måluppfyllnad (antal ingrepp under ST)</p>
+                <p className="text-[10px] text-slate-400">Registrera mål och utfört antal per ingrepp. Solvern prioriterar OP-dagar med kvarvarande behov.</p>
+                <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-400 uppercase font-semibold">
+                  <span>Ingrepp</span><span>Mål</span><span>Utfört</span>
+                </div>
+                {["Höftprotes primär", "Knäprotes primär", "Artoskopi knä", "Axelkirurgi", "Handkirurgi", "Frakturkirurgi"].map(proc => {
+                  const key = proc.toLowerCase().replace(/\s/g, "_");
+                  const target = form.st_target_procedures[key] || { goal: "", done: "" };
+                  return (
+                    <div key={key} className="grid grid-cols-3 gap-2 items-center">
+                      <span className="text-[11px] text-slate-600">{proc}</span>
+                      <input type="number" min="0" value={target.goal || ""} placeholder="—"
+                        onChange={e => setForm(f => ({
+                          ...f,
+                          st_target_procedures: {
+                            ...f.st_target_procedures,
+                            [key]: { ...f.st_target_procedures[key], goal: parseInt(e.target.value) || "" }
+                          }
+                        }))}
+                        className={`${input} text-center`} />
+                      <input type="number" min="0" value={target.done || ""} placeholder="—"
+                        onChange={e => setForm(f => ({
+                          ...f,
+                          st_target_procedures: {
+                            ...f.st_target_procedures,
+                            [key]: { ...f.st_target_procedures[key], done: parseInt(e.target.value) || "" }
+                          }
+                        }))}
+                        className={`${input} text-center`} />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
