@@ -345,7 +345,7 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
           {/* 6. Subspecialisering / Kompetenser */}
           <div className={section}>
             <SectionHeader icon={Stethoscope} title="Subspecialisering / Kompetenser" />
-            <p className="text-[11px] text-slate-500">Ange lakarens subspecialiteter for att optimera OP-tilldelning och jourbesattning.</p>
+            <p className="text-[11px] text-slate-500">Ange läkarens subspecialiteter för att optimera OP-tilldelning och jourbesättning.</p>
             <div className="flex flex-wrap gap-2">
               {COMPETENCY_OPTIONS.map(({ value, label: compLabel }) => {
                 const selected = form.competencies.includes(value);
@@ -580,7 +580,7 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
               {form.backup_call_config.eligible && (
                 <div className="space-y-3">
                   <div>
-                    <label className={label}>Max bakjourer per manad</label>
+                    <label className={label}>Max bakjourer per månad</label>
                     <input type="number" min="1" max="10" value={form.backup_call_config.max_per_month || ""}
                       onChange={e => setForm(f => ({ ...f, backup_call_config: { ...f.backup_call_config, max_per_month: e.target.value }}))}
                       className={`${input} w-24`} />
@@ -612,7 +612,7 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
           {(doctor.role === "SP" || doctor.role === "ÖL" || doctor.role === "ST_SEN") && (
             <div className={section}>
               <SectionHeader icon={Phone} title="Konsultschema" />
-              <p className="text-[11px] text-slate-400 mb-2">Tider da lakaren ar tillganglig for konsultationer fran andra avdelningar</p>
+              <p className="text-[11px] text-slate-400 mb-2">Tider då läkaren är tillgänglig för konsultationer från andra avdelningar</p>
               {form.consultation_schedule.map((entry, i) => (
                 <div key={i} className="flex items-center gap-2 mb-2">
                   <select value={entry.weekday || ""} onChange={e => {
@@ -640,7 +640,7 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
               ))}
               <button onClick={() => setForm(f => ({ ...f, consultation_schedule: [...f.consultation_schedule, { weekday: "", type: "telefon" }] }))}
                 className="flex items-center gap-1 text-[12px] text-blue-600 hover:text-blue-700 font-medium mt-1">
-                <Plus size={12} /> Lagg till konsulttid
+                <Plus size={12} /> Lägg till konsulttid
               </button>
             </div>
           )}
@@ -654,11 +654,11 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
                   <input type="checkbox" checked={form.op_pairing.require_senior_pair || false}
                     onChange={e => setForm(f => ({ ...f, op_pairing: { ...f.op_pairing, require_senior_pair: e.target.checked }}))}
                     className="rounded border-slate-300" />
-                  Krav pa senior (SP/OL) vid OP
+                  Krav på senior (SP/ÖL) vid OP
                 </label>
                 {form.op_pairing.require_senior_pair && (
                   <div>
-                    <label className={label}>Foredragen senior (valfritt)</label>
+                    <label className={label}>Föredragen senior (valfritt)</label>
                     <input type="text" value={form.op_pairing.preferred_senior_id || ""}
                       onChange={e => setForm(f => ({ ...f, op_pairing: { ...f.op_pairing, preferred_senior_id: e.target.value }}))}
                       placeholder="Lakare-ID, t.ex. doc_005"
@@ -668,9 +668,9 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
               </div>
             ) : (doctor.role === "SP" || doctor.role === "ÖL") ? (
               <div className="space-y-3">
-                <p className="text-[11px] text-slate-400">Vilka roller kan denna lakare handleda pa OP?</p>
+                <p className="text-[11px] text-slate-400">Vilka roller kan denna läkare handleda på OP?</p>
                 <div className="flex flex-wrap gap-2">
-                  {[{ v: "AT", l: "AT-lakare" }, { v: "UL", l: "Underlakare" }, { v: "ST_TIDIG", l: "ST tidig" }].map(r => {
+                  {[{ v: "AT", l: "AT-läkare" }, { v: "UL", l: "Underläkare" }, { v: "ST_TIDIG", l: "ST tidig" }].map(r => {
                     const sel = (form.op_pairing.can_supervise || []).includes(r.v);
                     return (
                       <button key={r.v} type="button"
@@ -686,7 +686,7 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
                 </div>
               </div>
             ) : (
-              <p className="text-[11px] text-slate-400">OP-parning konfigureras for AT/UL/ST-tidig (krav) och SP/OL (handledning).</p>
+              <p className="text-[11px] text-slate-400">OP-parning konfigureras för AT/UL/ST-tidig (krav) och SP/ÖL (handledning).</p>
             )}
           </div>
 
