@@ -5,6 +5,7 @@ import {
   ShieldCheck, Database, Users, Plus, Loader2, AlertTriangle, CheckCircle2,
   Stethoscope, Scale, Clock, Settings2, Trash2, Save, ToggleLeft, ToggleRight
 } from "lucide-react";
+import DoctorAdvancedModal from "../components/DoctorAdvancedModal";
 
 const inputClass = "w-full text-[13px] border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 outline-none transition-colors";
 const DOCTOR_ROLES = [
@@ -44,6 +45,7 @@ function DoctorsTab({ api, clinicId, config, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
   const [newDoc, setNewDoc] = useState({ id: "", name: "", role: "SP", employment_rate: 1.0, can_primary_call: false, can_backup_call: false, competencies: "" });
+  const [advancedDoc, setAdvancedDoc] = useState(null);
 
   useEffect(() => {
     if (config?.doctors) setDoctors(config.doctors.map(d => ({ ...d, competencies: Array.isArray(d.competencies) ? d.competencies : [] })));
@@ -92,12 +94,36 @@ function DoctorsTab({ api, clinicId, config, onSaved }) {
             <span className="font-medium text-slate-700 flex-1 truncate">{d.name}</span>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">{d.role}</span>
             <span className="text-slate-400 w-10 text-right">{Math.round((d.employment_rate || d.employment_percent || 1) * 100)}%</span>
+            {d.schedule_pattern && d.schedule_pattern !== "weekly" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700" title="Schemamönster">
+                {d.schedule_pattern === "biweekly_even" ? "2v:J" : "2v:U"}
+              </span>
+            )}
             <span className={`w-2 h-2 rounded-full ${d.can_primary_call ? "bg-red-400" : "bg-slate-200"}`} title="Primärjour" />
             <span className={`w-2 h-2 rounded-full ${d.can_backup_call ? "bg-amber-400" : "bg-slate-200"}`} title="Bakjour" />
+            <button
+              onClick={() => setAdvancedDoc(d)}
+              className="text-slate-300 hover:text-blue-500 transition-colors"
+              title="Avancerade inställningar"
+            >
+              <Settings2 size={13} />
+            </button>
             <button onClick={() => removeDoctor(d.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={13} /></button>
           </div>
         ))}
       </div>
+
+      {/* Advanced modal */}
+      {advancedDoc && (
+        <DoctorAdvancedModal
+          doctor={advancedDoc}
+          onClose={() => setAdvancedDoc(null)}
+          onSave={(id, patch) => {
+            setDoctors(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d));
+            setAdvancedDoc(null);
+          }}
+        />
+      )}
 
       {/* Add form */}
       <div className="card p-3 border-dashed border-slate-300">
