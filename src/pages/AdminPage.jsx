@@ -44,6 +44,7 @@ function DoctorsTab({ api, clinicId, config, onSaved }) {
   const [doctors, setDoctors] = useState([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [dirty, setDirty] = useState(false);
   const [newDoc, setNewDoc] = useState({ id: "", name: "", role: "SP", employment_rate: 1.0, can_primary_call: false, can_backup_call: false, competencies: "" });
   const [advancedDoc, setAdvancedDoc] = useState(null);
 
@@ -62,15 +63,20 @@ function DoctorsTab({ api, clinicId, config, onSaved }) {
     };
     setDoctors(prev => [...prev, doc]);
     setNewDoc({ id: "", name: "", role: "SP", employment_rate: 1.0, can_primary_call: false, can_backup_call: false, competencies: "" });
+    setDirty(true);
   };
 
-  const removeDoctor = (id) => setDoctors(prev => prev.filter(d => d.id !== id));
+  const removeDoctor = (id) => {
+    setDoctors(prev => prev.filter(d => d.id !== id));
+    setDirty(true);
+  };
 
   const save = async () => {
     setSaving(true); setMsg(null);
     try {
       await api(`/config/${clinicId}/doctors`, { method: "PATCH", body: JSON.stringify(doctors) });
       setMsg({ type: "success", text: `${doctors.length} läkare sparade` });
+      setDirty(false);
       onSaved?.();
     } catch (e) { setMsg({ type: "error", text: e.message }); }
     setSaving(false);
@@ -81,10 +87,22 @@ function DoctorsTab({ api, clinicId, config, onSaved }) {
       <div className="flex justify-between items-center">
         <h3 className="text-[13px] font-semibold text-slate-700">{doctors.length} läkare</h3>
         <button onClick={save} disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-[6px] bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-[12px] font-medium rounded-lg">
+          className={`flex items-center gap-1.5 px-3 py-[6px] text-white text-[12px] font-medium rounded-lg transition-all ${
+            dirty
+              ? "bg-blue-600 hover:bg-blue-700 animate-pulse shadow-md"
+              : "bg-blue-600 hover:bg-blue-700"
+          } disabled:opacity-50`}>
           {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Spara
         </button>
       </div>
+
+      {/* Unsaved changes warning */}
+      {dirty && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+          <span className="w-2 h-2 rounded-full bg-amber-400" />
+          <span className="text-[12px] font-medium text-amber-700">Du har osparade ändringar</span>
+        </div>
+      )}
 
       {/* Doctor list */}
       <div className="space-y-1 max-h-[400px] overflow-y-auto">
@@ -121,6 +139,7 @@ function DoctorsTab({ api, clinicId, config, onSaved }) {
           onSave={(id, patch) => {
             setDoctors(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d));
             setAdvancedDoc(null);
+            setDirty(true);
           }}
         />
       )}

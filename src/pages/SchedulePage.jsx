@@ -5,7 +5,7 @@ import { explainShift } from "../api/ai";
 import {
   ChevronLeft, ChevronRight, Plus, Filter, Download, FileText,
   Loader2, AlertTriangle, Check, CalendarRange, Settings2, Clock,
-  X, HelpCircle, CheckCircle2, XCircle, RefreshCw
+  X, HelpCircle, CheckCircle2, XCircle, RefreshCw, History
 } from "lucide-react";
 
 /* ── Function color system — auto-generated from function prefixes ── */
@@ -89,6 +89,11 @@ export default function SchedulePage() {
   const [genTimeLimit, setGenTimeLimit] = useState(30);
   const [genProgress, setGenProgress] = useState(null); // { jobId, elapsed }
   const [reoptimizing, setReoptimizing] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
+  const [versions, setVersions] = useState([]);
+  const [diff, setDiff] = useState(null);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState(null);
 
   // Load schedules when clinic changes
   useEffect(() => {
@@ -254,6 +259,38 @@ export default function SchedulePage() {
     } catch (e) { setError(e.message); setReoptimizing(false); setGenProgress(null); }
   };
 
+  /* ── Version history ─── */
+  const fetchVersions = async () => {
+    if (!selectedId) return;
+    setVersionsLoading(true);
+    setDiff(null);
+    setSelectedVersion(null);
+    try {
+      const res = await api(`/schedule/${selectedId}/versions`);
+      setVersions(res.versions || []);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setVersionsLoading(false);
+    }
+  };
+
+  const compareVersions = async (v1Index) => {
+    if (!selectedId || !versions.length) return;
+    setDiff(null);
+    const v1 = versions[v1Index];
+    const v2 = versions[0]; // latest
+    if (!v1 || !v2 || v1.version === v2.version) return;
+
+    try {
+      const res = await api(`/schedule/${selectedId}/diff/${v1.version}/${v2.version}`);
+      setDiff(res);
+      setSelectedVersion(v1Index);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
   /* ── Drag & drop swap ─── */
   const onDragStart = (docId, ci) => (e) => {
     setDragSrc({ docId, ci });
@@ -404,6 +441,11 @@ export default function SchedulePage() {
 
           {schedule && (
             <>
+              <button onClick={() => { setShowVersions(!showVersions); if (!showVersions) fetchVersions(); }} disabled={false}
+                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium text-amber-600 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 hover:border-amber-300 transition-colors">
+                <History size={13} />
+                {showVersions ? "Dölj" : "Historik"}
+              </button>
               <button onClick={reoptimize} disabled={reoptimizing}
                 className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium text-violet-600 bg-white border border-violet-200 rounded-lg hover:bg-violet-50 hover:border-violet-300 disabled:opacity-50 transition-colors">
                 {reoptimizing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
@@ -441,6 +483,77 @@ export default function SchedulePage() {
           {toast.isError ? <AlertTriangle size={14} /> : <Check size={14} />}
           {toast.text}
           {toast.warnings?.length > 0 && <span className="text-amber-600 ml-1 text-[12px]">({toast.warnings.join("; ")})</span>}
+        </div>
+      )}
+
+      {/* Version history panel */}
+      {showVersions && schedule && (
+        <div className="card p-4 border-amber-200 bg-amber-50/30">
+          <div className="flex items-center gap-2 mb-3">
+            <History size={15} className="text-amber-600" />
+            <span className="text-[13px] font-semibold text-slate-700">Versionshistorik</span>
+          </div>
+
+          {versionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={18} className="animate-spin text-amber-600" />
+            </div>
+          ) : versions.length === 0 ? (
+            <div className="text-[12px] text-slate-500 py-4 text-center">Inga versioner tillgängliga</div>
+          ) : (
+            <>
+              <div className="space-y-2 mb-4 max-h-[200px] overflow-y-auto">
+                {versions.map((v, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-md border transition-colors cursor-pointer ${
+                      selectedVersion === idx
+                        ? "bg-white border-amber-300 border-2"
+                        : "bg-white border-slate-200 hover:border-amber-200"
+                    }`}
+                    onClick={() => compareVersions(idx)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-[12px] font-semibold text-slate-700">Version {v.version}</span>
+                        <span className="text-[11px] text-slate-500 ml-2">
+                          {new Date(v.timestamp).toLocaleString("sv-SE")}
+                        </span>
+                      </div>
+                      {idx === 0 && <span className="text-[10px] font-medium px-2 py-1 rounded bg-emerald-100 text-emerald-700">Aktuell</span>}
+                    </div>
+                    {v.summary && <div className="text-[11px] text-slate-600 mt-1">{v.summary}</div>}
+                  </div>
+                ))}
+              </div>
+
+              {diff && selectedVersion !== null && (
+                <div className="border-t border-amber-200 pt-3">
+                  <div className="text-[12px] font-semibold text-slate-700 mb-2">Ändringar från version {versions[selectedVersion].version} till aktuell</div>
+                  {diff.summary && <div className="text-[11px] text-slate-600 mb-2">{diff.summary}</div>}
+                  {diff.changed_assignments && diff.changed_assignments.length > 0 ? (
+                    <div className="space-y-1 max-h-[150px] overflow-y-auto">
+                      {diff.changed_assignments.map((change, idx) => {
+                        const doc = doctorMap[change.doctor_id];
+                        const docName = doc?.name || change.doctor_id;
+                        return (
+                          <div key={idx} className="text-[11px] text-slate-700 p-2 bg-white/60 rounded border border-amber-100">
+                            <span className="font-medium">{docName}</span>
+                            <span className="text-slate-500 mx-1">{change.day}:</span>
+                            <span className="text-red-600">{change.old_func}</span>
+                            <span className="text-slate-400 mx-1">→</span>
+                            <span className="text-emerald-600">{change.new_func}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-slate-500 text-center py-2">Inga ändringar mellan versioner</div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

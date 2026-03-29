@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { getFairness } from "../api/fairness";
+import { useAuth } from "../context/AuthContext";
+import { useClinic } from "../context/ClinicContext";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line
@@ -22,10 +23,102 @@ function ScoreBadge({ score }) {
 }
 
 export default function FairnessPage() {
+  const { api } = useAuth();
+  const { clinicId, config } = useClinic();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { getFairness().then(setData).finally(() => setLoading(false)); }, []);
+  useEffect(() => {
+    if (!clinicId || !api) return;
+    (async () => {
+      try {
+        // Fetch statistics
+        const stats = await api("/statistics");
+
+        // Fetch schedules and get the latest one for counting weekend/night passes
+        const schedules = await api("/schedules");
+        const latestSchedule = schedules && schedules.length > 0 ? await api(`/schedules/${schedules[0].id}`) : null;
+
+        // Get doctor names from config
+        const docMap = {};
+        if (config?.doctors) {
+          config.doctors.forEach(doc => {
+            docMap[doc.id] = doc.name;
+          });
+        }
+
+        // Compute fairness metrics from real data
+        const doctors = [];
+        if (stats?.call_distribution && stats?.workload_balance) {
+          Object.entries(stats.call_distribution).forEach(([docId, callData]) => {
+            const docName = docMap[docId] || callData.name || docId;
+            const utilization = stats.workload_balance[docId]?.utilization || 0;
+
+            // Count passes from schedule if available
+            let jour = 0, helg = 0, natt = 0;
+            if (latestSchedule?.days && Array.isArray(latestSchedule.days)) {
+              latestSchedule.days.forEach(day => {
+                if (day.assignments && day.assignments[docId]) {
+                  const func = day.assignments[docId];
+                  const isWeekend = day.weekday === 5 || day.weekday === 6; // Sat/Sun
+                  const isNight = func.includes("NATT") || func.includes("HELGNATT");
+
+                  if (func.includes("JOUR_P") || func.includes("JOUR_B")) {
+                    jour++;
+                    if (isNight) natt++;
+                    else if (isWeekend) helg++;
+                  }
+                }
+              });
+            }
+
+            // Fallback to call distribution if schedule data unavailable
+            if (jour === 0) {
+              jour = (callData.primary || 0) + (callData.backup || 0);
+            }
+
+            const total = jour + helg + natt;
+            doctors.push({
+              id: docId,
+              name: docName,
+              jour,
+              helg,
+              natt,
+              total,
+            });
+          });
+        }
+
+        // Compute fairness score from stddev of totals
+        const totals = doctors.map(d => d.total);
+        const avg = totals.length > 0 ? totals.reduce((a, b) => a + b, 0) / totals.length : 0;
+        const variance = totals.length > 0 ? totals.reduce((a, b) => a + (b - avg) ** 2, 0) / totals.length : 0;
+        const stddev = Math.sqrt(variance);
+        const maxStddev = 5;
+        const fairness_score = Math.max(0, Math.round(100 - (stddev / maxStddev) * 100));
+
+        // Generate trend data (mock for now, could come from historical stats)
+        const trend = [
+          { month: "Jan", score: fairness_score - 5 },
+          { month: "Feb", score: fairness_score - 2 },
+          { month: "Mar", score: fairness_score },
+        ];
+
+        setData({
+          doctors: doctors.sort((a, b) => b.total - a.total),
+          fairness_score,
+          avg_total: Math.round(avg * 10) / 10,
+          stddev: Math.round(stddev * 10) / 10,
+          period: "Senaste 3 manaderna",
+          trend,
+        });
+      } catch (e) {
+        console.error("Failed to load fairness data:", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [clinicId, api, config]);
 
   if (loading) return <div className="p-6 text-center"><Loader2 size={24} className="animate-spin text-violet-500 mx-auto" /></div>;
   if (!data) return null;
