@@ -1,14 +1,14 @@
 /**
  * DoctorAdvancedModal — Konfigurerar avancerade schemaläggningsinställningar per läkare.
- * Hanterar: varannan vecka, fasta veckodagar, min/max passtyp, halvdagar,
- * återkommande aktiviteter och explicit dagar/vecka.
+ * Alla dropdowns drivs dynamiskt av klinikens ui-config (inga hardkodade värden).
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   X, Save, Plus, Trash2, Calendar, Clock,
   Repeat, LayoutGrid, AlignLeft, Activity, Stethoscope,
   Shield, Phone, Users
 } from "lucide-react";
+import { useClinic } from "../context/ClinicContext";
 
 const WEEKDAYS = [
   { value: "monday",    label: "Måndag" },
@@ -18,33 +18,22 @@ const WEEKDAYS = [
   { value: "friday",    label: "Fredag" },
 ];
 
-const FUNC_OPTIONS = [
-  { value: "",              label: "— Välj funktion —" },
-  { value: "OP_CSK",        label: "OP CSK" },
-  { value: "OP_Hässleholm", label: "OP Hässleholm" },
-  { value: "MOTT_CSK",      label: "Mottagning CSK" },
-  { value: "MOTT_Hässleholm", label: "Mottagning Hässleholm" },
-  { value: "AVD_CSK",       label: "Avdelning CSK" },
-  { value: "AVD_Hässleholm","label": "Avdelning Hässleholm" },
-  { value: "AKUT_CSK",      label: "Akut CSK" },
-  { value: "ADMIN",         label: "Admin" },
-  { value: "FORSKNING",     label: "Forskning" },
-  { value: "HANDLEDNING",   label: "Handledning" },
-  { value: "UTBILDNING",    label: "Utbildning" },
-  { value: "LEDIG",         label: "Ledig" },
+// Fallback randning (om klinik inte har konfigurerat)
+const DEFAULT_RANDNING = [
+  "Handkirurgi SUS", "Ryggkirurgi SUS", "Barnortopedi SUS",
+  "Tumörortopedi SUS", "Idrottsmedicin", "Rehab/Smärta",
+  "Reumatologi", "Radiologi", "Annan klinik",
 ];
 
-const SHIFT_PREFIXES = [
-  { value: "OP",          label: "OP (operation)" },
-  { value: "MOTT",        label: "MOTT (mottagning)" },
-  { value: "AVD",         label: "AVD (avdelning)" },
-  { value: "AKUT",        label: "AKUT" },
-  { value: "ADMIN",       label: "Admin" },
-  { value: "FORSKNING",   label: "Forskning" },
-  { value: "HANDLEDNING", label: "Handledning" },
-  { value: "UTBILDNING",  label: "Utbildning" },
-  { value: "JOUR_P",      label: "Primärjour" },
-  { value: "JOUR_B",      label: "Bakjour" },
+// Fallback kompetenser
+const DEFAULT_COMPETENCIES = [
+  { value: "trauma", label: "Trauma" }, { value: "hoft", label: "Höft/Proteskirurgi" },
+  { value: "hand", label: "Handkirurgi" }, { value: "rygg", label: "Ryggkirurgi" },
+  { value: "fot", label: "Fotkirurgi" }, { value: "axel", label: "Axel/Artroskopi" },
+  { value: "kna", label: "Knäkirurgi" }, { value: "tumor", label: "Tumörortopedi" },
+  { value: "barn", label: "Barnortopedi" }, { value: "idrottsmedicin", label: "Idrottsmedicin" },
+  { value: "osteoporos", label: "Osteoporos" }, { value: "infektion", label: "Ortopedisk infektion" },
+  { value: "rehabilitering", label: "Rehabilitering" },
 ];
 
 const input  = "w-full text-[13px] border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 outline-none transition-colors";
@@ -60,56 +49,45 @@ function SectionHeader({ icon: Icon, title }) {
   );
 }
 
-// AT-rotation template presets
-const AT_ROTATION_TEMPLATES = [
-  { label: "Standard (1 trauma, 2 akut, 1 mott, 1 avd)", days: { monday: "AKUT_CSK", tuesday: "AKUT_CSK", wednesday: "MOTT_CSK", thursday: "AVD_CSK", friday: "AKUT_CSK" } },
-  { label: "Trauma-fokus (2 trauma, 2 akut, 1 mott)", days: { monday: "AKUT_CSK", tuesday: "AKUT_CSK", wednesday: "MOTT_CSK", thursday: "AKUT_CSK", friday: "AKUT_CSK" } },
-  { label: "Anpassad (välj själv)", days: null },
-];
-
-// AT weekly function options — more specific for AT rotation
-const AT_FUNC_OPTIONS = [
-  { value: "",                label: "— Välj —" },
-  { value: "AKUT_CSK",       label: "Akutmottagning" },
-  { value: "TRAUMA",         label: "Traumamottagning" },
-  { value: "MOTT_CSK",       label: "Mottagning" },
-  { value: "AVD_CSK",        label: "Avdelning" },
-  { value: "OP_CSK",         label: "OP (assistera)" },
-  { value: "GIPS",           label: "Gips/Ortopedmottagning" },
-  { value: "HANDLEDNING",    label: "Handledning" },
-  { value: "UTBILDNING",     label: "Utbildning/Föreläsning" },
-];
-
-// ST randning types
-const RANDNING_KLINIKER = [
-  "Handkirurgi SUS",
-  "Ryggkirurgi SUS",
-  "Barnortopedi SUS",
-  "Tumörortopedi SUS",
-  "Idrottsmedicin",
-  "Rehab/Smärta",
-  "Reumatologi",
-  "Radiologi",
-  "Annan klinik",
-];
-
-const COMPETENCY_OPTIONS = [
-  { value: "trauma", label: "Trauma" },
-  { value: "hoft", label: "Hoft/Proteskirurgi" },
-  { value: "hand", label: "Handkirurgi" },
-  { value: "rygg", label: "Ryggkirurgi" },
-  { value: "fot", label: "Fotkirurgi" },
-  { value: "axel", label: "Axel/Artroskopi" },
-  { value: "kna", label: "Knakirurgi" },
-  { value: "tumor", label: "Tumorortopedi" },
-  { value: "barn", label: "Barnortopedi" },
-  { value: "idrottsmedicin", label: "Idrottsmedicin" },
-  { value: "osteoporos", label: "Osteoporos" },
-  { value: "infektion", label: "Ortopedisk infektion" },
-  { value: "rehabilitering", label: "Rehabilitering" },
-];
-
 export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
+  const { uiConfig } = useClinic();
+
+  // Dynamiska options från klinikens config
+  const FUNC_OPTIONS = useMemo(() => {
+    if (!uiConfig?.day_functions) return [{ value: "", label: "-- Välj --" }];
+    return [{ value: "", label: "-- Välj funktion --" }, ...uiConfig.day_functions.map(f => ({ value: f.value, label: f.label }))];
+  }, [uiConfig]);
+
+  const SHIFT_PREFIXES = useMemo(() => {
+    if (!uiConfig?.day_functions) return [];
+    // Unika prefix (OP, MOTT, AVD, AKUT, ADMIN...) + jour
+    const seen = new Set();
+    const prefixes = [];
+    for (const f of uiConfig.day_functions) {
+      const prefix = f.value.split("_")[0];
+      if (!seen.has(prefix)) { seen.add(prefix); prefixes.push({ value: prefix, label: `${prefix} (${f.category || prefix})` }); }
+    }
+    for (const c of (uiConfig.call_functions || [])) { prefixes.push({ value: c.value, label: c.label }); }
+    return prefixes;
+  }, [uiConfig]);
+
+  const AT_FUNC_OPTIONS = useMemo(() => {
+    // AT kan gå på alla dagfunktioner
+    return FUNC_OPTIONS;
+  }, [FUNC_OPTIONS]);
+
+  const RANDNING_KLINIKER = useMemo(() => {
+    const fromConfig = uiConfig?.randning_kliniker || [];
+    return fromConfig.length > 0 ? [...fromConfig, "Annan klinik"] : DEFAULT_RANDNING;
+  }, [uiConfig]);
+
+  const COMPETENCY_OPTIONS = useMemo(() => {
+    if (uiConfig?.competencies?.length > 0) {
+      return uiConfig.competencies.map(c => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }));
+    }
+    return DEFAULT_COMPETENCIES;
+  }, [uiConfig]);
+
   const [form, setForm] = useState({
     schedule_pattern:       doctor.schedule_pattern       || "weekly",
     work_days_per_week:     doctor.work_days_per_week     ?? "",
