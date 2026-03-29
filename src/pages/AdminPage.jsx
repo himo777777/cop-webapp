@@ -4,7 +4,7 @@ import { useClinic } from "../context/ClinicContext";
 import {
   ShieldCheck, Database, Users, Plus, Loader2, AlertTriangle, CheckCircle2,
   Stethoscope, Scale, Clock, Settings2, Trash2, Save, ToggleLeft, ToggleRight,
-  Upload, CalendarOff, FileSpreadsheet
+  Upload, CalendarOff, FileSpreadsheet, ScrollText, RefreshCw
 } from "lucide-react";
 import DoctorAdvancedModal from "../components/DoctorAdvancedModal";
 
@@ -536,6 +536,144 @@ function VacationTab({ api, clinicId, config }) {
   );
 }
 
+/* ── AUDIT TAB ─── */
+function AuditTab({ api, clinicId }) {
+  const [entries, setEntries] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionFilter, setActionFilter] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [logData, statsData] = await Promise.all([
+        api(`/audit?clinic_id=${clinicId || "kristianstad"}&limit=200`),
+        api(`/audit/stats?clinic_id=${clinicId || "kristianstad"}`),
+      ]);
+      setEntries(Array.isArray(logData) ? logData : logData?.entries || []);
+      setStats(statsData || null);
+    } catch (e) {
+      console.error("Audit load failed:", e);
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [api, clinicId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const ACTION_COLORS = {
+    "schedule.generate": "bg-emerald-100 text-emerald-700",
+    "schedule.adjust": "bg-blue-100 text-blue-700",
+    "absence.create": "bg-amber-100 text-amber-700",
+    "absence.delete": "bg-red-100 text-red-700",
+    "config.update": "bg-violet-100 text-violet-700",
+    "user.login": "bg-slate-100 text-slate-600",
+    "user.create": "bg-teal-100 text-teal-700",
+  };
+
+  const uniqueActions = [...new Set(entries.map(e => e.action || e.event_type))].filter(Boolean);
+  const filtered = entries.filter(e => !actionFilter || (e.action || e.event_type) === actionFilter);
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h3 className="text-[13px] font-semibold text-slate-700">Audit-logg</h3>
+        <button onClick={load} disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
+          <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Uppdatera
+        </button>
+      </div>
+
+      {/* Stats strip */}
+      {stats && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {Object.entries(stats.by_action || {}).slice(0, 4).map(([action, count]) => (
+            <div key={action} className="card p-2.5 text-center">
+              <p className="text-[10px] text-slate-400 truncate">{action}</p>
+              <p className="text-[16px] font-bold text-slate-700">{count}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Action filter */}
+      <div className="flex gap-2 items-center flex-wrap">
+        <select value={actionFilter} onChange={e => { setActionFilter(e.target.value); setPage(0); }}
+          className="text-[12px] border border-slate-200 rounded-lg px-2 py-1.5 focus:border-blue-400 outline-none">
+          <option value="">Alla händelser</option>
+          {uniqueActions.map(a => <option key={a} value={a}>{a}</option>)}
+        </select>
+        <span className="text-[11px] text-slate-400">{filtered.length} poster</span>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8"><Loader2 size={24} className="animate-spin text-slate-400 mx-auto" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="py-8 text-center">
+          <ScrollText size={28} className="text-slate-300 mx-auto mb-2" />
+          <p className="text-[12px] text-slate-400">Inga audit-poster att visa</p>
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-[10px] text-slate-400 uppercase bg-slate-50">
+                  <th className="text-left py-2 px-3">Tid</th>
+                  <th className="text-left py-2 px-3">Händelse</th>
+                  <th className="text-left py-2 px-3">Användare</th>
+                  <th className="text-left py-2 px-3">Detaljer</th>
+                  <th className="text-left py-2 px-3">IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.map((e, i) => {
+                  const action = e.action || e.event_type || "";
+                  const cls = ACTION_COLORS[action] || "bg-slate-100 text-slate-600";
+                  const ts = e.timestamp || e.created_at || "";
+                  const formattedTs = ts ? new Date(ts).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "medium" }) : "—";
+                  return (
+                    <tr key={i} className="border-t border-slate-50 hover:bg-slate-50">
+                      <td className="py-2 px-3 text-slate-500 font-mono whitespace-nowrap">{formattedTs}</td>
+                      <td className="py-2 px-3">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${cls}`}>{action || "—"}</span>
+                      </td>
+                      <td className="py-2 px-3 font-medium text-slate-700">{e.user_id || e.performed_by || "system"}</td>
+                      <td className="py-2 px-3 text-slate-500 max-w-[300px] truncate" title={JSON.stringify(e.details || e.metadata || {})}>
+                        {e.description || (e.details ? JSON.stringify(e.details).slice(0, 80) : "—")}
+                      </td>
+                      <td className="py-2 px-3 text-slate-400 font-mono">{e.ip_address || e.ip || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2 justify-center pt-2">
+              <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                className="px-2.5 py-1 text-[11px] border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">
+                Föregående
+              </button>
+              <span className="text-[11px] text-slate-500">{page + 1} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
+                className="px-2.5 py-1 text-[11px] border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">
+                Nästa
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ── SETTINGS TAB ─── */
 function SettingsTab({ api, health, dbStatus }) {
   return (
@@ -591,6 +729,7 @@ export default function AdminPage() {
         <TabButton active={tab === "rules"} icon={Scale} label="Regler" onClick={() => setTab("rules")} />
         <TabButton active={tab === "users"} icon={Users} label="Användare" onClick={() => setTab("users")} />
         <TabButton active={tab === "vacation"} icon={CalendarOff} label="Semester" onClick={() => setTab("vacation")} />
+        <TabButton active={tab === "audit"} icon={ScrollText} label="Audit-logg" onClick={() => setTab("audit")} />
         <TabButton active={tab === "settings"} icon={Settings2} label="System" onClick={() => setTab("settings")} />
       </div>
 
@@ -600,6 +739,7 @@ export default function AdminPage() {
         {tab === "rules" && <RulesTab api={api} clinicId={clinicId} config={config} onSaved={handleSaved} />}
         {tab === "users" && <UsersTab api={api} />}
         {tab === "vacation" && <VacationTab api={api} clinicId={clinicId} config={config} />}
+        {tab === "audit" && <AuditTab api={api} clinicId={clinicId} />}
         {tab === "settings" && <SettingsTab api={api} health={health} dbStatus={dbStatus} />}
       </div>
     </div>

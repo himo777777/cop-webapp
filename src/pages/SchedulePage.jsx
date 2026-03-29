@@ -5,7 +5,7 @@ import { explainShift } from "../api/ai";
 import {
   ChevronLeft, ChevronRight, Plus, Filter, Download, FileText,
   Loader2, AlertTriangle, Check, CalendarRange, Settings2, Clock,
-  X, HelpCircle, CheckCircle2, XCircle, RefreshCw, History
+  X, HelpCircle, CheckCircle2, XCircle, RefreshCw, History, FlaskConical
 } from "lucide-react";
 
 /* ── Function color system — auto-generated from function prefixes ── */
@@ -94,6 +94,13 @@ export default function SchedulePage() {
   const [diff, setDiff] = useState(null);
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState(null);
+  // Simulator
+  const [showSimulator, setShowSimulator] = useState(false);
+  const [simScenario, setSimScenario] = useState("absence");
+  const [simDoctorId, setSimDoctorId] = useState("");
+  const [simDays, setSimDays] = useState(5);
+  const [simResult, setSimResult] = useState(null);
+  const [simRunning, setSimRunning] = useState(false);
 
   // Load schedules when clinic changes
   useEffect(() => {
@@ -441,6 +448,14 @@ export default function SchedulePage() {
 
           {schedule && (
             <>
+              <button onClick={() => setShowSimulator(s => !s)}
+                className={`flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium rounded-lg border transition-colors ${
+                  showSimulator
+                    ? "bg-teal-600 text-white border-teal-600"
+                    : "text-teal-600 bg-white border-teal-200 hover:bg-teal-50 hover:border-teal-300"
+                }`}>
+                <FlaskConical size={13} /> Simulator
+              </button>
               <button onClick={() => { setShowVersions(!showVersions); if (!showVersions) fetchVersions(); }} disabled={false}
                 className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium text-amber-600 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 hover:border-amber-300 transition-colors">
                 <History size={13} />
@@ -754,6 +769,143 @@ export default function SchedulePage() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Simulator panel */}
+      {showSimulator && (
+        <div className="card p-4 space-y-4 border-teal-200 bg-teal-50/30">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[14px] font-semibold text-slate-800 flex items-center gap-2">
+              <FlaskConical size={16} className="text-teal-600" /> Schema-simulator
+            </h3>
+            <button onClick={() => setShowSimulator(false)} className="text-slate-400 hover:text-slate-600">
+              <X size={16} />
+            </button>
+          </div>
+          <p className="text-[12px] text-slate-500">Simulera hur schemat påverkas av ett scenario utan att ändra det aktiva schemat.</p>
+
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-[11px] text-slate-500 mb-1 block">Scenario</label>
+              <select value={simScenario} onChange={e => setSimScenario(e.target.value)}
+                className="w-full text-[12px] border border-slate-200 rounded-lg px-2 py-2 focus:border-teal-400 outline-none bg-white">
+                <option value="absence">Sjukfrånvaro — täck upp</option>
+                <option value="extra_doctor">Lägg till extra läkare</option>
+                <option value="remove_doctor">Ta bort läkare tillfälligt</option>
+                <option value="high_demand">Hög belastning (+30% jour)</option>
+                <option value="understaffed">Underbemanning</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-500 mb-1 block">Läkar-ID (valfritt)</label>
+              <input value={simDoctorId} onChange={e => setSimDoctorId(e.target.value)}
+                placeholder="t.ex. SP1"
+                className="w-full text-[12px] border border-slate-200 rounded-lg px-2 py-2 focus:border-teal-400 outline-none bg-white" />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-500 mb-1 block">Dagar att simulera</label>
+              <input type="number" min="1" max="30" value={simDays} onChange={e => setSimDays(parseInt(e.target.value) || 5)}
+                className="w-full text-[12px] border border-slate-200 rounded-lg px-2 py-2 focus:border-teal-400 outline-none bg-white" />
+            </div>
+          </div>
+
+          <button
+            onClick={async () => {
+              if (!selectedId) return;
+              setSimRunning(true);
+              setSimResult(null);
+              try {
+                const result = await api("/simulate", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    schedule_id: selectedId,
+                    clinic_id: clinicId || "kristianstad",
+                    scenario: simScenario,
+                    doctor_id: simDoctorId || undefined,
+                    days: simDays,
+                  }),
+                });
+                setSimResult(result);
+              } catch (e) {
+                setSimResult({ error: "Simulering misslyckades — " + (e.message || "okänt fel") });
+              } finally {
+                setSimRunning(false);
+              }
+            }}
+            disabled={simRunning || !selectedId}
+            className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-[12px] font-medium rounded-lg">
+            {simRunning ? <Loader2 size={13} className="animate-spin" /> : <FlaskConical size={13} />}
+            {simRunning ? "Simulerar..." : "Kör simulering"}
+          </button>
+
+          {simResult && (
+            <div className={`card p-4 space-y-3 ${simResult.error ? "border-red-200 bg-red-50" : "border-emerald-200 bg-emerald-50/50"}`}>
+              {simResult.error ? (
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertTriangle size={14} /> <span className="text-[12px]">{simResult.error}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 text-emerald-700">
+                    <CheckCircle2 size={14} /> <span className="text-[13px] font-semibold">Simulering klar</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {simResult.coverage_pct !== undefined && (
+                      <div className="card p-2.5 bg-white">
+                        <p className="text-[10px] text-slate-400">Täckning</p>
+                        <p className={`text-[18px] font-bold ${simResult.coverage_pct >= 90 ? "text-emerald-600" : simResult.coverage_pct >= 70 ? "text-orange-500" : "text-red-600"}`}>
+                          {simResult.coverage_pct}%
+                        </p>
+                      </div>
+                    )}
+                    {simResult.uncovered_slots !== undefined && (
+                      <div className="card p-2.5 bg-white">
+                        <p className="text-[10px] text-slate-400">Otäckta pass</p>
+                        <p className={`text-[18px] font-bold ${simResult.uncovered_slots === 0 ? "text-emerald-600" : "text-red-600"}`}>
+                          {simResult.uncovered_slots}
+                        </p>
+                      </div>
+                    )}
+                    {simResult.overtime_hours !== undefined && (
+                      <div className="card p-2.5 bg-white">
+                        <p className="text-[10px] text-slate-400">Övertid (h)</p>
+                        <p className="text-[18px] font-bold text-slate-800">{simResult.overtime_hours}</p>
+                      </div>
+                    )}
+                    {simResult.fairness_delta !== undefined && (
+                      <div className="card p-2.5 bg-white">
+                        <p className="text-[10px] text-slate-400">Rättvisa Δ</p>
+                        <p className={`text-[18px] font-bold ${Math.abs(simResult.fairness_delta) < 0.1 ? "text-emerald-600" : "text-orange-500"}`}>
+                          {simResult.fairness_delta > 0 ? "+" : ""}{simResult.fairness_delta?.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {simResult.recommendations?.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-600 mb-1">Rekommendationer:</p>
+                      {simResult.recommendations.map((r, i) => (
+                        <div key={i} className="text-[12px] text-slate-700 flex items-start gap-1.5">
+                          <Check size={11} className="text-emerald-600 mt-0.5 shrink-0" /> {r}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {simResult.warnings?.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-semibold text-amber-700 mb-1">Varningar:</p>
+                      {simResult.warnings.map((w, i) => (
+                        <div key={i} className="text-[12px] text-amber-700 flex items-start gap-1.5">
+                          <AlertTriangle size={11} className="mt-0.5 shrink-0" /> {w}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

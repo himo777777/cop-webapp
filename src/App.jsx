@@ -14,6 +14,10 @@ import SwapsPage from "./pages/SwapsPage";
 import WishesPage from "./pages/WishesPage";
 import FairnessPage from "./pages/FairnessPage";
 import ReportsPage from "./pages/ReportsPage";
+import PayrollPage from "./pages/PayrollPage";
+import OPPage from "./pages/OPPage";
+import CompTimePage from "./pages/CompTimePage";
+import BaseSchedulePage from "./pages/BaseSchedulePage";
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -33,6 +37,10 @@ function AppContent() {
     wishes: <WishesPage />,
     fairness: <FairnessPage />,
     reports: <ReportsPage />,
+    payroll: <PayrollPage />,
+    "op-plan": <OPPage />,
+    "comp-time": <CompTimePage />,
+    "base-schedule": <BaseSchedulePage />,
   };
 
   return (
