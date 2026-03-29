@@ -18,6 +18,7 @@ import PayrollPage from "./pages/PayrollPage";
 import OPPage from "./pages/OPPage";
 import CompTimePage from "./pages/CompTimePage";
 import BaseSchedulePage from "./pages/BaseSchedulePage";
+import OnboardingPage from "./pages/OnboardingPage";
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -41,6 +42,7 @@ function AppContent() {
     "op-plan": <OPPage />,
     "comp-time": <CompTimePage />,
     "base-schedule": <BaseSchedulePage />,
+    onboarding: <OnboardingPage />,
   };
 
   return (

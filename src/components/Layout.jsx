@@ -12,10 +12,10 @@ import {
 const NAV = [
   { id: "schedule", label: "Schema", icon: CalendarDays },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "absence", label: "Franvaro", icon: UserX },
+  { id: "absence", label: "Frånvaro", icon: UserX },
   { id: "swaps", label: "Bytestavla", icon: ArrowLeftRight },
-  { id: "wishes", label: "Onskemol", icon: CalendarHeart },
-  { id: "fairness", label: "Rattvisa", icon: Scale },
+  { id: "wishes", label: "Önskemål", icon: CalendarHeart },
+  { id: "fairness", label: "Rättvisa", icon: Scale },
   { id: "reports", label: "Rapporter", icon: FileBarChart },
   { id: "payroll", label: "Löneunderlag", icon: Banknote },
   { id: "op-plan", label: "OP-planering", icon: Stethoscope },
@@ -24,6 +24,7 @@ const NAV = [
   { id: "ai-rules", label: "AI-regler", icon: Sparkles },
   { id: "ai-chat", label: "Schema-chatt", icon: MessageCircle },
   { id: "ai-predict", label: "Prediktioner", icon: TrendingUp },
+  { id: "onboarding", label: "Ny klinik", icon: Building2, adminOnly: true },
   { id: "admin", label: "Administration", icon: Settings, adminOnly: true },
 ];
 
