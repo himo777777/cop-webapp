@@ -3,7 +3,8 @@ import { useAuth } from "../context/AuthContext";
 import { useClinic } from "../context/ClinicContext";
 import {
   ShieldCheck, Database, Users, Plus, Loader2, AlertTriangle, CheckCircle2,
-  Stethoscope, Scale, Clock, Settings2, Trash2, Save, ToggleLeft, ToggleRight
+  Stethoscope, Scale, Clock, Settings2, Trash2, Save, ToggleLeft, ToggleRight,
+  Upload, CalendarOff, FileSpreadsheet
 } from "lucide-react";
 import DoctorAdvancedModal from "../components/DoctorAdvancedModal";
 
@@ -330,6 +331,211 @@ function UsersTab({ api }) {
   );
 }
 
+/* ── VACATION TAB (Bulk-import semester) ─── */
+function VacationTab({ api, clinicId, config }) {
+  const [rows, setRows] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [results, setResults] = useState(null);
+  const [msg, setMsg] = useState(null);
+
+  const doctors = config?.doctors || [];
+
+  // Parse CSV text: expects "doctor_id,start_date,end_date" or "doctor_id,date"
+  const parseCSV = (text) => {
+    const lines = text.trim().split("\n").filter(l => l.trim() && !l.startsWith("#"));
+    const parsed = [];
+    for (const line of lines) {
+      const parts = line.split(/[,;\t]/).map(s => s.trim().replace(/"/g, ""));
+      if (parts.length < 2) continue;
+      // Skip header row
+      if (parts[0].toLowerCase().includes("doctor") || parts[0].toLowerCase().includes("lakare") || parts[0].toLowerCase().includes("id")) continue;
+
+      const doctorId = parts[0];
+      const startDate = parts[1];
+      const endDate = parts[2] || parts[1]; // If no end date, single day
+
+      // Expand date range into individual days
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) continue;
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        parsed.push({
+          doctor_id: doctorId,
+          doctor_name: doctors.find(doc => doc.id === doctorId)?.name || doctorId,
+          date: d.toISOString().split("T")[0],
+          absence_type: parts[3] || "semester",
+        });
+      }
+    }
+    return parsed;
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target.result;
+      const parsed = parseCSV(text);
+      setRows(parsed);
+      setResults(null);
+      if (parsed.length === 0) {
+        setMsg({ type: "error", text: "Kunde inte tolka filen. Format: doctor_id,start_date,end_date" });
+      } else {
+        setMsg({ type: "success", text: `${parsed.length} semesterdagar tolkade fran ${file.name}` });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    if (rows.length === 0) return;
+    setImporting(true);
+    setProgress({ done: 0, total: rows.length });
+    const outcomes = { success: 0, failed: 0, errors: [] };
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        await api("/absence", {
+          method: "POST",
+          body: JSON.stringify({
+            clinic_id: clinicId || "kristianstad",
+            doctor_id: row.doctor_id,
+            start_date: row.date,
+            end_date: row.date,
+            absence_type: row.absence_type,
+            reason: "Bulk-import semester",
+          }),
+        });
+        outcomes.success++;
+      } catch (e) {
+        outcomes.failed++;
+        if (outcomes.errors.length < 5) {
+          outcomes.errors.push(`${row.doctor_id} ${row.date}: ${e.message || "fel"}`);
+        }
+      }
+      setProgress({ done: i + 1, total: rows.length });
+    }
+
+    setResults(outcomes);
+    setImporting(false);
+    setMsg(outcomes.failed === 0
+      ? { type: "success", text: `${outcomes.success} semesterdagar importerade!` }
+      : { type: "error", text: `${outcomes.success} lyckades, ${outcomes.failed} misslyckades` }
+    );
+  };
+
+  // Group rows by doctor for preview
+  const groupedByDoctor = {};
+  rows.forEach(r => {
+    if (!groupedByDoctor[r.doctor_id]) groupedByDoctor[r.doctor_id] = { name: r.doctor_name, days: [] };
+    groupedByDoctor[r.doctor_id].days.push(r.date);
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-[14px] font-semibold text-slate-700 flex items-center gap-2">
+            <CalendarOff size={16} className="text-amber-500" /> Bulk-import semester
+          </h3>
+          <p className="text-[12px] text-slate-500 mt-0.5">Ladda upp en CSV-fil med semesterperioder for hela kliniken.</p>
+        </div>
+      </div>
+
+      {/* File format info */}
+      <div className="card p-3 bg-slate-50 border-slate-200">
+        <p className="text-[11px] font-semibold text-slate-600 mb-1">CSV-format (semikolon eller komma):</p>
+        <code className="text-[10px] text-blue-700 bg-blue-50 px-2 py-1 rounded block">
+          doctor_id;start_date;end_date;typ<br />
+          SP1;2026-06-15;2026-07-10;semester<br />
+          OL2;2026-07-01;2026-07-21;semester<br />
+          ST3;2026-08-03;2026-08-03;utbildning
+        </code>
+      </div>
+
+      {/* Upload */}
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[12px] font-medium rounded-lg cursor-pointer">
+          <Upload size={14} /> Valj CSV-fil
+          <input type="file" accept=".csv,.txt,.tsv" onChange={handleFileUpload} className="hidden" />
+        </label>
+        {rows.length > 0 && (
+          <span className="text-[12px] text-slate-600">
+            <FileSpreadsheet size={13} className="inline mr-1" />
+            {rows.length} dagar for {Object.keys(groupedByDoctor).length} lakare
+          </span>
+        )}
+      </div>
+
+      {/* Preview */}
+      {rows.length > 0 && (
+        <div className="card p-3 max-h-[240px] overflow-y-auto">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="text-[10px] text-slate-400 uppercase">
+                <th className="text-left py-1">Lakare</th>
+                <th className="text-left py-1">Period</th>
+                <th className="text-left py-1">Dagar</th>
+                <th className="text-left py-1">Typ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(groupedByDoctor).map(([id, { name, days }]) => {
+                const sorted = [...days].sort();
+                return (
+                  <tr key={id} className="border-t border-slate-100">
+                    <td className="py-1.5 font-medium text-slate-700">{name}</td>
+                    <td className="py-1.5 text-slate-500">{sorted[0]} — {sorted[sorted.length - 1]}</td>
+                    <td className="py-1.5 text-slate-500">{days.length}</td>
+                    <td className="py-1.5">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">semester</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Import button + progress */}
+      {rows.length > 0 && (
+        <div className="space-y-2">
+          <button onClick={handleImport} disabled={importing}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[13px] font-medium rounded-lg">
+            {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+            {importing ? `Importerar ${progress.done}/${progress.total}...` : `Importera ${rows.length} semesterdagar`}
+          </button>
+
+          {importing && (
+            <div className="w-full bg-slate-100 rounded-full h-2">
+              <div className="bg-emerald-500 h-2 rounded-full transition-all" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Results */}
+      {results && (
+        <div className={`card p-3 ${results.failed > 0 ? "border-amber-200 bg-amber-50/50" : "border-emerald-200 bg-emerald-50/50"}`}>
+          <p className="text-[13px] font-semibold">{results.success} lyckades, {results.failed} misslyckades</p>
+          {results.errors.length > 0 && (
+            <div className="mt-1 space-y-0.5">
+              {results.errors.map((e, i) => <p key={i} className="text-[11px] text-red-600">{e}</p>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      <Toast msg={msg} />
+    </div>
+  );
+}
+
 /* ── SETTINGS TAB ─── */
 function SettingsTab({ api, health, dbStatus }) {
   return (
@@ -384,6 +590,7 @@ export default function AdminPage() {
         <TabButton active={tab === "doctors"} icon={Stethoscope} label="Läkare" onClick={() => setTab("doctors")} />
         <TabButton active={tab === "rules"} icon={Scale} label="Regler" onClick={() => setTab("rules")} />
         <TabButton active={tab === "users"} icon={Users} label="Användare" onClick={() => setTab("users")} />
+        <TabButton active={tab === "vacation"} icon={CalendarOff} label="Semester" onClick={() => setTab("vacation")} />
         <TabButton active={tab === "settings"} icon={Settings2} label="System" onClick={() => setTab("settings")} />
       </div>
 
@@ -392,6 +599,7 @@ export default function AdminPage() {
         {tab === "doctors" && <DoctorsTab api={api} clinicId={clinicId} config={config} onSaved={handleSaved} />}
         {tab === "rules" && <RulesTab api={api} clinicId={clinicId} config={config} onSaved={handleSaved} />}
         {tab === "users" && <UsersTab api={api} />}
+        {tab === "vacation" && <VacationTab api={api} clinicId={clinicId} config={config} />}
         {tab === "settings" && <SettingsTab api={api} health={health} dbStatus={dbStatus} />}
       </div>
     </div>
