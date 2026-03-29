@@ -6,7 +6,8 @@
 import { useState } from "react";
 import {
   X, Save, Plus, Trash2, Calendar, Clock,
-  Repeat, LayoutGrid, AlignLeft, Activity, Stethoscope
+  Repeat, LayoutGrid, AlignLeft, Activity, Stethoscope,
+  Shield, Phone, Users
 } from "lucide-react";
 
 const WEEKDAYS = [
@@ -127,6 +128,12 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
     st_min_op_days:         doctor.st_min_op_days         ?? "",
     st_required_op_types:   doctor.st_required_op_types   || [],
     st_target_procedures:   doctor.st_target_procedures   || {},
+    // Bakjourslinje
+    backup_call_config:     doctor.backup_call_config     || { eligible: false, max_per_month: 4, preferred_days: [] },
+    // Konsultschema
+    consultation_schedule:  doctor.consultation_schedule  || [],
+    // Senior/junior OP-par
+    op_pairing:             doctor.op_pairing             || { require_senior_pair: false, preferred_senior_id: "", can_supervise: [] },
   });
 
   // --- Fixed weekdays helpers ---
@@ -171,6 +178,18 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
       st_target_procedures: Object.fromEntries(
         Object.entries(form.st_target_procedures).filter(([_, v]) => v.goal || v.done)
       ),
+      // Bakjour config
+      backup_call_config: {
+        ...form.backup_call_config,
+        max_per_month: parseInt(form.backup_call_config.max_per_month) || 4,
+      },
+      // Clean empty consultation entries
+      consultation_schedule: form.consultation_schedule.filter(c => c.weekday),
+      // OP pairing
+      op_pairing: {
+        ...form.op_pairing,
+        can_supervise: form.op_pairing.can_supervise.filter(Boolean),
+      },
     };
     onSave(doctor.id, patch);
     onClose();
@@ -567,6 +586,131 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
               </div>
             </div>
           )}
+
+          {/* 9. Bakjourslinje — Senior (ÖL/SP) */}
+          {(doctor.role === "SP" || doctor.role === "ÖL") && (
+            <div className={section}>
+              <SectionHeader icon={Shield} title="Bakjourslinje" />
+              <div className="flex items-center gap-3 mb-3">
+                <label className="flex items-center gap-2 text-[13px] text-slate-700 cursor-pointer">
+                  <input type="checkbox" checked={form.backup_call_config.eligible || false}
+                    onChange={e => setForm(f => ({ ...f, backup_call_config: { ...f.backup_call_config, eligible: e.target.checked }}))}
+                    className="rounded border-slate-300" />
+                  Kan gå bakjour
+                </label>
+              </div>
+              {form.backup_call_config.eligible && (
+                <div className="space-y-3">
+                  <div>
+                    <label className={label}>Max bakjourer per manad</label>
+                    <input type="number" min="1" max="10" value={form.backup_call_config.max_per_month || ""}
+                      onChange={e => setForm(f => ({ ...f, backup_call_config: { ...f.backup_call_config, max_per_month: e.target.value }}))}
+                      className={`${input} w-24`} />
+                  </div>
+                  <div>
+                    <label className={label}>Preferensdagar for bakjour</label>
+                    <div className="flex flex-wrap gap-2">
+                      {WEEKDAYS.map(wd => {
+                        const sel = (form.backup_call_config.preferred_days || []).includes(wd.value);
+                        return (
+                          <button key={wd.value} type="button"
+                            onClick={() => setForm(f => {
+                              const days = f.backup_call_config.preferred_days || [];
+                              return { ...f, backup_call_config: { ...f.backup_call_config, preferred_days: sel ? days.filter(d => d !== wd.value) : [...days, wd.value] }};
+                            })}
+                            className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors ${sel ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                            {wd.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 10. Konsultschema — Senior */}
+          {(doctor.role === "SP" || doctor.role === "ÖL" || doctor.role === "ST_SEN") && (
+            <div className={section}>
+              <SectionHeader icon={Phone} title="Konsultschema" />
+              <p className="text-[11px] text-slate-400 mb-2">Tider da lakaren ar tillganglig for konsultationer fran andra avdelningar</p>
+              {form.consultation_schedule.map((entry, i) => (
+                <div key={i} className="flex items-center gap-2 mb-2">
+                  <select value={entry.weekday || ""} onChange={e => {
+                    const arr = [...form.consultation_schedule];
+                    arr[i] = { ...arr[i], weekday: e.target.value };
+                    setForm(f => ({ ...f, consultation_schedule: arr }));
+                  }} className={`${input} flex-1`}>
+                    <option value="">-- Dag --</option>
+                    {WEEKDAYS.map(wd => <option key={wd.value} value={wd.value}>{wd.label}</option>)}
+                  </select>
+                  <select value={entry.type || "telefon"} onChange={e => {
+                    const arr = [...form.consultation_schedule];
+                    arr[i] = { ...arr[i], type: e.target.value };
+                    setForm(f => ({ ...f, consultation_schedule: arr }));
+                  }} className={`${input} w-36`}>
+                    <option value="telefon">Telefonkonsult</option>
+                    <option value="rond">Konsultrond</option>
+                    <option value="bedside">Bedside-konsult</option>
+                  </select>
+                  <button onClick={() => setForm(f => ({ ...f, consultation_schedule: f.consultation_schedule.filter((_, idx) => idx !== i) }))}
+                    className="p-1.5 text-red-400 hover:text-red-600">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+              <button onClick={() => setForm(f => ({ ...f, consultation_schedule: [...f.consultation_schedule, { weekday: "", type: "telefon" }] }))}
+                className="flex items-center gap-1 text-[12px] text-blue-600 hover:text-blue-700 font-medium mt-1">
+                <Plus size={12} /> Lagg till konsulttid
+              </button>
+            </div>
+          )}
+
+          {/* 11. Senior/Junior OP-parning */}
+          <div className={section}>
+            <SectionHeader icon={Users} title="OP-parning (Senior/Junior)" />
+            {(doctor.role === "AT" || doctor.role === "UL" || doctor.role === "ST_TIDIG") ? (
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-[13px] text-slate-700 cursor-pointer">
+                  <input type="checkbox" checked={form.op_pairing.require_senior_pair || false}
+                    onChange={e => setForm(f => ({ ...f, op_pairing: { ...f.op_pairing, require_senior_pair: e.target.checked }}))}
+                    className="rounded border-slate-300" />
+                  Krav pa senior (SP/OL) vid OP
+                </label>
+                {form.op_pairing.require_senior_pair && (
+                  <div>
+                    <label className={label}>Foredragen senior (valfritt)</label>
+                    <input type="text" value={form.op_pairing.preferred_senior_id || ""}
+                      onChange={e => setForm(f => ({ ...f, op_pairing: { ...f.op_pairing, preferred_senior_id: e.target.value }}))}
+                      placeholder="Lakare-ID, t.ex. doc_005"
+                      className={input} />
+                  </div>
+                )}
+              </div>
+            ) : (doctor.role === "SP" || doctor.role === "ÖL") ? (
+              <div className="space-y-3">
+                <p className="text-[11px] text-slate-400">Vilka roller kan denna lakare handleda pa OP?</p>
+                <div className="flex flex-wrap gap-2">
+                  {[{ v: "AT", l: "AT-lakare" }, { v: "UL", l: "Underlakare" }, { v: "ST_TIDIG", l: "ST tidig" }].map(r => {
+                    const sel = (form.op_pairing.can_supervise || []).includes(r.v);
+                    return (
+                      <button key={r.v} type="button"
+                        onClick={() => setForm(f => {
+                          const cur = f.op_pairing.can_supervise || [];
+                          return { ...f, op_pairing: { ...f.op_pairing, can_supervise: sel ? cur.filter(x => x !== r.v) : [...cur, r.v] }};
+                        })}
+                        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors ${sel ? "bg-green-50 border-green-300 text-green-700" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                        {r.l}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400">OP-parning konfigureras for AT/UL/ST-tidig (krav) och SP/OL (handledning).</p>
+            )}
+          </div>
 
         </div>
 
