@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useClinic } from "../context/ClinicContext";
 import { useWebSocket } from "../hooks/useWebSocket";
 import {
   CalendarDays, LayoutDashboard, UserX, Settings, LogOut,
   ChevronLeft, ChevronRight, Menu, X, Zap, Building2,
-  Sparkles, MessageCircle, TrendingUp, ArrowLeftRight, CalendarHeart, Scale
+  Sparkles, MessageCircle, TrendingUp, ArrowLeftRight, CalendarHeart, Scale,
+  Bell, CheckCheck
 } from "lucide-react";
 
 const NAV = [
@@ -22,11 +23,51 @@ const NAV = [
 ];
 
 export default function Layout({ page, setPage, children }) {
-  const { user, logout } = useAuth();
+  const { user, logout, api } = useAuth();
   const { clinics, clinicId, switchClinic } = useClinic();
   const { connected } = useWebSocket("system");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const loadNotifications = useCallback(async () => {
+    if (!api || !user?.username) return;
+    setNotifLoading(true);
+    try {
+      const data = await api(`/notifications/${user.username}?unread_only=false`);
+      setNotifications(Array.isArray(data) ? data : data?.notifications || []);
+    } catch {
+      setNotifications([]);
+    } finally {
+      setNotifLoading(false);
+    }
+  }, [api, user?.username]);
+
+  const markRead = async (notifId) => {
+    try {
+      await api(`/notifications/${notifId}/read?user_id=${user?.username || "anon"}`, { method: "PUT" });
+      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+    } catch {}
+  };
+
+  const markAllRead = async () => {
+    const unread = notifications.filter(n => !n.read);
+    for (const n of unread) {
+      try { await api(`/notifications/${n.id}/read?user_id=${user?.username || "anon"}`, { method: "PUT" }); } catch {}
+    }
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  // Load notifications on mount and every 60s
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
 
   const visibleNav = NAV.filter(n => !n.adminOnly || user?.role === "admin");
 
@@ -155,6 +196,62 @@ export default function Layout({ page, setPage, children }) {
                 </select>
               </div>
             )}
+
+            {/* Notification bell */}
+            <div className="relative">
+              <button onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) loadNotifications(); }}
+                className="relative p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors">
+                <Bell size={16} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification dropdown */}
+              {showNotifs && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifs(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                      <span className="text-[13px] font-semibold text-slate-700">Notifieringar</span>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="text-[11px] text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                          <CheckCheck size={12} /> Markera alla
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-[360px] overflow-y-auto">
+                      {notifLoading ? (
+                        <div className="py-8 text-center"><span className="text-[12px] text-slate-400">Laddar...</span></div>
+                      ) : notifications.length === 0 ? (
+                        <div className="py-8 text-center">
+                          <Bell size={20} className="text-slate-300 mx-auto mb-2" />
+                          <span className="text-[12px] text-slate-400">Inga notifieringar</span>
+                        </div>
+                      ) : (
+                        notifications.slice(0, 15).map(n => (
+                          <button key={n.id} onClick={() => { if (!n.read) markRead(n.id); }}
+                            className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!n.read ? "bg-blue-50/40" : ""}`}>
+                            <div className="flex items-start gap-2">
+                              {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />}
+                              <div className="min-w-0">
+                                <p className={`text-[12px] ${!n.read ? "font-semibold text-slate-800" : "text-slate-600"}`}>
+                                  {n.title || n.message || n.type}
+                                </p>
+                                {n.body && <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{n.body}</p>}
+                                <p className="text-[10px] text-slate-400 mt-1">{n.created_at || n.timestamp || ""}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-400 bg-slate-50 px-2.5 py-1 rounded-md">
               <Zap size={11} className={connected ? "text-emerald-500" : "text-slate-400"} />

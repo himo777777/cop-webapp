@@ -6,7 +6,7 @@
 import { useState } from "react";
 import {
   X, Save, Plus, Trash2, Calendar, Clock,
-  Repeat, LayoutGrid, AlignLeft, Activity
+  Repeat, LayoutGrid, AlignLeft, Activity, Stethoscope
 } from "lucide-react";
 
 const WEEKDAYS = [
@@ -59,6 +59,22 @@ function SectionHeader({ icon: Icon, title }) {
   );
 }
 
+const COMPETENCY_OPTIONS = [
+  { value: "trauma", label: "Trauma" },
+  { value: "hoft", label: "Hoft/Proteskirurgi" },
+  { value: "hand", label: "Handkirurgi" },
+  { value: "rygg", label: "Ryggkirurgi" },
+  { value: "fot", label: "Fotkirurgi" },
+  { value: "axel", label: "Axel/Artroskopi" },
+  { value: "kna", label: "Knakirurgi" },
+  { value: "tumor", label: "Tumorortopedi" },
+  { value: "barn", label: "Barnortopedi" },
+  { value: "idrottsmedicin", label: "Idrottsmedicin" },
+  { value: "osteoporos", label: "Osteoporos" },
+  { value: "infektion", label: "Ortopedisk infektion" },
+  { value: "rehabilitering", label: "Rehabilitering" },
+];
+
 export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
   const [form, setForm] = useState({
     schedule_pattern:       doctor.schedule_pattern       || "weekly",
@@ -69,6 +85,7 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
     half_day_schedule:      doctor.half_day_schedule      || {},
     recurring_activities:   doctor.recurring_activities   || [],
     current_rotation_block: doctor.current_rotation_block || {},
+    competencies:           doctor.competencies           || [],
   });
 
   // --- Fixed weekdays helpers ---
@@ -280,7 +297,38 @@ export default function DoctorAdvancedModal({ doctor, onClose, onSave }) {
             </div>
           </div>
 
-          {/* 6. AT-block (visa om roll är AT) */}
+          {/* 6. Subspecialisering / Kompetenser */}
+          <div className={section}>
+            <SectionHeader icon={Stethoscope} title="Subspecialisering / Kompetenser" />
+            <p className="text-[11px] text-slate-500">Ange lakarens subspecialiteter for att optimera OP-tilldelning och jourbesattning.</p>
+            <div className="flex flex-wrap gap-2">
+              {COMPETENCY_OPTIONS.map(({ value, label: compLabel }) => {
+                const selected = form.competencies.includes(value);
+                return (
+                  <button key={value}
+                    onClick={() => setForm(f => ({
+                      ...f,
+                      competencies: selected
+                        ? f.competencies.filter(c => c !== value)
+                        : [...f.competencies, value]
+                    }))}
+                    className={`px-3 py-1.5 text-[11px] rounded-lg border transition-colors ${
+                      selected
+                        ? "bg-blue-50 border-blue-300 text-blue-700 font-semibold"
+                        : "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                    }`}
+                  >
+                    {compLabel}
+                  </button>
+                );
+              })}
+            </div>
+            {form.competencies.length > 0 && (
+              <p className="text-[10px] text-blue-600 mt-1">{form.competencies.length} kompetenser valda</p>
+            )}
+          </div>
+
+          {/* 7. AT-block (visa om roll är AT) */}
           {doctor.role === "AT" && (
             <div className={section}>
               <SectionHeader icon={AlignLeft} title="AT-block rotation" />
