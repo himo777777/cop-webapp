@@ -425,17 +425,24 @@ export default function SchedulePage() {
   /* ── Render ─────────────────────────────────────────────────────── */
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <p className="text-[13px] text-slate-500">
+          <h1 className="text-[20px] font-bold" style={{ color: "var(--text-primary)" }}>Schema</h1>
+          <p className="text-[13px] mt-0.5" style={{ color: "var(--text-muted)" }}>
             {config ? `${config.num_doctors} läkare · ${config.num_rooms} operationssalar · ${schedule?.num_weeks || "–"} veckor` : "Laddar konfiguration..."}
           </p>
         </div>
+      </div>
+
+      {/* Toolbar */}
+      <div className="card p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <select value={selectedId || ""} onChange={e => { setSelectedId(e.target.value); setWeekOffset(0); }}
-            className="text-[12px] border border-slate-200 rounded-lg px-3 py-[7px] bg-white text-slate-700 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 outline-none">
+            className="text-[12px] rounded-lg px-3 py-[7px] outline-none"
+            style={{ border: "1px solid var(--card-border)", background: "var(--card-bg)", color: "var(--text-primary)" }}>
             {schedules.length === 0 && <option value="">Inga scheman</option>}
             {schedules.map(s => (
               <option key={s.schedule_id} value={s.schedule_id}>
@@ -445,9 +452,10 @@ export default function SchedulePage() {
           </select>
 
           <div className="relative">
-            <Filter size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <Filter size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-muted)" }} />
             <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
-              className="text-[12px] border border-slate-200 rounded-lg pl-7 pr-3 py-[7px] bg-white text-slate-700 appearance-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 outline-none">
+              className="text-[12px] rounded-lg pl-7 pr-3 py-[7px] appearance-none outline-none"
+              style={{ border: "1px solid var(--card-border)", background: "var(--card-bg)", color: "var(--text-primary)" }}>
               <option value="ALL">Alla roller</option>
               <option value="ÖL">Överläkare</option>
               <option value="SP">Specialist</option>
@@ -460,36 +468,40 @@ export default function SchedulePage() {
           {schedule && (
             <>
               <button onClick={() => setShowSimulator(s => !s)}
-                className={`flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium rounded-lg border transition-colors ${
-                  showSimulator
-                    ? "bg-teal-600 text-white border-teal-600"
-                    : "text-teal-600 bg-white border-teal-200 hover:bg-teal-50 hover:border-teal-300"
-                }`}>
+                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium rounded-lg border transition-colors"
+                style={showSimulator
+                  ? { background: "#0891B2", color: "white", borderColor: "#0891B2" }
+                  : { background: "var(--card-bg)", color: "#0891B2", borderColor: "#BAE6FD" }}>
                 <FlaskConical size={13} /> Simulator
               </button>
-              <button onClick={() => { setShowVersions(!showVersions); if (!showVersions) fetchVersions(); }} disabled={false}
-                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium text-amber-600 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 hover:border-amber-300 transition-colors">
+              <button onClick={() => { setShowVersions(!showVersions); if (!showVersions) fetchVersions(); }}
+                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium rounded-lg border transition-colors"
+                style={{ background: "var(--card-bg)", color: "#D97706", borderColor: "#FDE68A" }}>
                 <History size={13} />
                 {showVersions ? "Dölj" : "Historik"}
               </button>
               <button onClick={reoptimize} disabled={reoptimizing}
-                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium text-violet-600 bg-white border border-violet-200 rounded-lg hover:bg-violet-50 hover:border-violet-300 disabled:opacity-50 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium rounded-lg border transition-colors disabled:opacity-50"
+                style={{ background: "var(--card-bg)", color: "#7C3AED", borderColor: "#DDD6FE" }}>
                 {reoptimizing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
                 {reoptimizing ? "Reoptimerar..." : "Reoptimera"}
               </button>
               <button onClick={exportSchedule}
-                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium rounded-lg border transition-colors"
+                style={{ background: "var(--card-bg)", color: "var(--text-secondary)", borderColor: "var(--card-border)" }}>
                 <Download size={13} /> Excel
               </button>
               <button onClick={exportPdf}
-                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-[7px] text-[12px] font-medium rounded-lg border transition-colors"
+                style={{ background: "var(--card-bg)", color: "#DC2626", borderColor: "#FECACA" }}>
                 <FileText size={13} /> PDF
               </button>
             </>
           )}
 
           <button onClick={() => generating ? null : setShowGenDialog(true)} disabled={generating}
-            className="flex items-center gap-1.5 px-4 py-[7px] bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-[12px] font-semibold rounded-lg transition-colors shadow-sm shadow-blue-600/20">
+            className="flex items-center gap-1.5 px-4 py-[7px] text-white text-[12px] font-semibold rounded-lg transition-colors disabled:opacity-50"
+            style={{ background: "var(--primary)", boxShadow: "0 2px 8px rgba(21,96,212,0.25)" }}>
             {generating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} strokeWidth={2.5} />}
             {generating ? (genProgress ? `Optimerar... ${genProgress.elapsed}s` : "Startar...") : "Nytt schema"}
           </button>
@@ -617,17 +629,23 @@ export default function SchedulePage() {
 
       {/* Week nav */}
       {schedule && (
-        <div className="flex items-center justify-between card px-4 py-2">
+        <div className="card flex items-center justify-between px-4 py-2.5">
           <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0}
-            className="p-1.5 rounded-md hover:bg-slate-100 disabled:opacity-20 transition-colors">
+            className="p-1.5 rounded-lg disabled:opacity-20 transition-colors"
+            style={{ color: "var(--text-secondary)" }}
+            onMouseEnter={e => e.currentTarget.style.background = "var(--primary-light)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
             <ChevronLeft size={16} />
           </button>
           <div className="text-center">
-            <span className="text-[13px] font-semibold text-slate-800">Vecka {weekOffset + 1} av {schedule.num_weeks}</span>
-            <span className="text-[12px] text-slate-400 ml-3">{weekLabel}</span>
+            <span className="text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>Vecka {weekOffset + 1} av {schedule.num_weeks}</span>
+            <span className="text-[12px] ml-3" style={{ color: "var(--text-muted)" }}>{weekLabel}</span>
           </div>
           <button onClick={() => setWeekOffset(w => Math.min(maxWeek, w + 1))} disabled={weekOffset >= maxWeek}
-            className="p-1.5 rounded-md hover:bg-slate-100 disabled:opacity-20 transition-colors">
+            className="p-1.5 rounded-lg disabled:opacity-20 transition-colors"
+            style={{ color: "var(--text-secondary)" }}
+            onMouseEnter={e => e.currentTarget.style.background = "var(--primary-light)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
             <ChevronRight size={16} />
           </button>
         </div>
@@ -640,17 +658,19 @@ export default function SchedulePage() {
             <table className="w-full border-collapse min-w-[720px] grid-table">
               <thead>
                 <tr>
-                  <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 py-2.5 w-44 bg-slate-50/80 sticky left-0 z-10 backdrop-blur-sm border-r border-slate-100">
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 w-44 sticky left-0 z-10 backdrop-blur-sm"
+                    style={{ background: "var(--nav-bg)", color: "rgba(255,255,255,0.5)", borderRight: "1px solid rgba(255,255,255,0.08)" }}>
                     Läkare
                   </th>
                   {weekData.dates.map((d, i) => {
                     const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                     return (
-                      <th key={i} className={`text-center px-1.5 py-2 ${isWeekend ? "bg-slate-50" : "bg-white"}`}>
-                        <div className={`text-[11px] font-semibold ${isWeekend ? "text-slate-400" : "text-slate-700"}`}>
+                      <th key={i} className="text-center px-1.5 py-2"
+                        style={{ background: isWeekend ? "rgba(14,41,87,0.04)" : "var(--nav-bg)" }}>
+                        <div className="text-[11px] font-semibold" style={{ color: isWeekend ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.75)" }}>
                           {WEEKDAYS[d.getDay() === 0 ? 6 : d.getDay() - 1]}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-normal">{d.getDate()}/{d.getMonth() + 1}</div>
+                        <div className="text-[10px] font-normal" style={{ color: "rgba(255,255,255,0.35)" }}>{d.getDate()}/{d.getMonth() + 1}</div>
                       </th>
                     );
                   })}
@@ -660,18 +680,22 @@ export default function SchedulePage() {
                 {filteredRows.map((row) => {
                   const role = ROLES[row.doc.role] || { color: "#94a3b8", label: "?" };
                   return (
-                    <tr key={row.doc.id} className="hover:bg-blue-50/30 transition-colors">
-                      <td className="px-3 py-[5px] sticky left-0 z-10 bg-white border-r border-slate-100">
+                    <tr key={row.doc.id} className="transition-colors"
+                      style={{ borderBottom: "1px solid var(--card-border)" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "var(--primary-light)"}
+                      onMouseLeave={e => e.currentTarget.style.background = ""}>
+                      <td className="px-3 py-[5px] sticky left-0 z-10" style={{ background: "var(--card-bg)", borderRight: "1px solid var(--card-border)" }}>
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center justify-center w-[22px] h-[16px] rounded text-[9px] font-bold text-white shrink-0"
+                          <span className="inline-flex items-center justify-center w-[24px] h-[17px] rounded text-[9px] font-bold text-white shrink-0"
                             style={{ background: role.color }}>{role.label}</span>
-                          <span className="text-[12px] font-medium text-slate-700 truncate max-w-[130px]">{row.doc.name}</span>
+                          <span className="text-[12px] font-medium truncate max-w-[130px]" style={{ color: "var(--text-primary)" }}>{row.doc.name}</span>
                         </div>
                       </td>
                       {row.cells.map((func, ci) => {
                         const isWeekend = weekData.dates[ci]?.getDay() === 0 || weekData.dates[ci]?.getDay() === 6;
                         return (
-                          <td key={ci} className={`px-[3px] py-[3px] ${isWeekend ? "bg-slate-50/50" : ""}`}
+                          <td key={ci} className="px-[3px] py-[3px]"
+                            style={isWeekend ? { background: "rgba(14,41,87,0.02)" } : {}}
                             onDragLeave={() => { if (dropTgt?.docId === row.doc.id && dropTgt?.ci === ci) setDropTgt(null); }}
                           >
                             <Cell func={func} draggable
@@ -699,9 +723,9 @@ export default function SchedulePage() {
           </div>
 
           {/* Staffing strip */}
-          <div className="border-t border-slate-100 bg-slate-50/60 px-3 py-2">
+          <div className="px-3 py-2" style={{ borderTop: "1px solid var(--card-border)", background: "var(--bg-main)" }}>
             <div className="flex items-center gap-4 overflow-x-auto">
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider shrink-0">Bemanning</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: "var(--text-muted)" }}>Bemanning</span>
               {weekData.dates.map((_, i) => {
                 const c = staffing[i] || {};
                 const total = Object.values(c).reduce((a, b) => a + b, 0);
@@ -709,8 +733,8 @@ export default function SchedulePage() {
                 const jb = c["JOUR_B"] || 0;
                 return (
                   <div key={i} className="text-center shrink-0 min-w-[55px]">
-                    <span className="text-[11px] font-semibold text-slate-700">{total}</span>
-                    {(jp > 0 || jb > 0) && <span className="text-[10px] text-red-400 ml-0.5">J{jp}+{jb}</span>}
+                    <span className="text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>{total}</span>
+                    {(jp > 0 || jb > 0) && <span className="text-[10px] ml-0.5" style={{ color: "#DC2626" }}>J{jp}+{jb}</span>}
                   </div>
                 );
               })}
@@ -718,24 +742,26 @@ export default function SchedulePage() {
           </div>
         </div>
       ) : !schedule ? (
-        <div className="card text-center py-20">
-          <CalendarRange size={40} className="mx-auto mb-4 text-slate-300" strokeWidth={1.2} />
-          <p className="text-[15px] font-medium text-slate-500">Inget schema valt</p>
-          <p className="text-[13px] text-slate-400 mt-1">Generera ett nytt schema eller välj ett befintligt.</p>
+        <div className="card text-center py-20" style={{ borderStyle: "dashed", background: "transparent" }}>
+          <div className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center" style={{ background: "var(--primary-light)" }}>
+            <CalendarRange size={28} style={{ color: "var(--primary)" }} strokeWidth={1.5} />
+          </div>
+          <p className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>Inget schema valt</p>
+          <p className="text-[13px] mt-1.5" style={{ color: "var(--text-muted)" }}>Generera ett nytt schema eller välj ett befintligt ovan.</p>
         </div>
       ) : null}
 
       {/* Legend — dynamic from schedule functions */}
-      <div className="flex flex-wrap gap-1.5 pt-1">
+      <div className="flex flex-wrap items-center gap-1.5 pt-1">
         {schedule && (() => {
           const funcs = new Set();
           Object.values(schedule.schedule || {}).forEach(days => Object.values(days).forEach(f => { if (f !== "LEDIG") funcs.add(f); }));
           return [...funcs].sort().map(key => {
             const f = getFuncStyle(key);
-            return <span key={key} className="text-[9px] font-semibold px-2 py-[3px] rounded" style={{ background: f.bg, color: f.fg }}>{f.label}</span>;
+            return <span key={key} className="text-[9px] font-semibold px-2 py-[3px] rounded-md" style={{ background: f.bg, color: f.fg, border: `1px solid ${f.border}` }}>{f.label}</span>;
           });
         })()}
-        <span className="text-[9px] text-slate-400 ml-2 self-center">Klicka pa en cell for forklaring. Dra for att byta pass.</span>
+        <span className="text-[10px] ml-2 self-center" style={{ color: "var(--text-muted)" }}>Klicka på en cell för förklaring. Dra för att byta pass.</span>
       </div>
 
       {/* Explain modal */}
