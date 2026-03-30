@@ -4,106 +4,147 @@
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* === Base === */
+/* ── Base ────────────────────────────────────────────────────────── */
 html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-body { background: #f8fafc; }
+body { background: #EEF2F8; }
 
-/* === Scrollbar === */
+/* ── CSS Variables — Medical Design System ───────────────────────── */
+:root {
+  --primary: #1560D4;
+  --primary-dark: #0E47A1;
+  --primary-light: #EBF2FF;
+  --teal: #0891B2;
+  --teal-light: #E0F7FB;
+  --nav-bg: #0B1E38;
+  --nav-border: rgba(255,255,255,0.06);
+  --nav-active-bg: rgba(21,96,212,0.2);
+  --nav-active-text: #6AABF7;
+  --nav-hover-bg: rgba(255,255,255,0.05);
+  --card-bg: #ffffff;
+  --card-border: #DDE4F0;
+  --card-shadow: 0 1px 3px rgba(14,41,87,0.06), 0 1px 2px rgba(14,41,87,0.04);
+  --card-shadow-md: 0 4px 16px rgba(14,41,87,0.09), 0 1px 3px rgba(14,41,87,0.05);
+  --text-primary: #0D1B2E;
+  --text-secondary: #4A5568;
+  --text-muted: #8E9EB5;
+  --bg-main: #EEF2F8;
+  --border-default: #DDE4F0;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #c8d1dc; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-thumb { background: #C5D0E4; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #9BADC8; }
 
-/* === Schedule grid === */
+/* ── Card ────────────────────────────────────────────────────────── */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+}
+
+/* ── Metric card accent bar ──────────────────────────────────────── */
+.metric-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+  position: relative;
+  overflow: hidden;
+}
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 14px 14px 0 0;
+}
+.metric-card.accent-blue::before   { background: linear-gradient(90deg, #1560D4, #5B9EF5); }
+.metric-card.accent-green::before  { background: linear-gradient(90deg, #059669, #34D399); }
+.metric-card.accent-red::before    { background: linear-gradient(90deg, #DC2626, #F87171); }
+.metric-card.accent-teal::before   { background: linear-gradient(90deg, #0891B2, #22D3EE); }
+.metric-card.accent-violet::before { background: linear-gradient(90deg, #7C3AED, #A78BFA); }
+.metric-card.accent-amber::before  { background: linear-gradient(90deg, #D97706, #FCD34D); }
+
+/* ── Schedule grid ───────────────────────────────────────────────── */
 .schedule-cell {
   transition: transform 0.1s ease, box-shadow 0.1s ease;
   will-change: transform;
 }
 .schedule-cell:hover:not([draggable="false"]) {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 3px 10px rgba(14,41,87,0.14);
 }
 .schedule-cell[draggable="true"] { cursor: grab; }
 .schedule-cell[draggable="true"]:active { cursor: grabbing; }
 
-/* === Status pulse === */
+/* ── Status pulse ────────────────────────────────────────────────── */
 @keyframes status-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
+  50% { opacity: 0.4; transform: scale(0.8); }
 }
 .status-pulse { animation: status-pulse 2.5s ease-in-out infinite; }
 
-/* === Sidebar transitions === */
+/* ── Sidebar nav ─────────────────────────────────────────────────── */
 .sidebar-item {
   position: relative;
   transition: color 0.15s, background 0.15s;
+  border-radius: 8px;
 }
-.sidebar-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 4px;
-  bottom: 4px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: transparent;
-  transition: background 0.2s;
-}
-.sidebar-item-active::before {
-  background: #3b82f6;
+.sidebar-item-active {
+  background: var(--nav-active-bg) !important;
 }
 
-/* === Card depth === */
-.card {
-  background: white;
-  border: 1px solid #e8ecf1;
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-}
-.card:hover {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-
-/* === Table === */
+/* ── Table ───────────────────────────────────────────────────────── */
 .grid-table th {
   position: sticky;
   top: 0;
   z-index: 5;
+  background: #F8FAFD;
 }
 .grid-table td, .grid-table th {
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #EEF2F8;
 }
-.grid-table tr:last-child td {
-  border-bottom: none;
-}
+.grid-table tr:last-child td { border-bottom: none; }
+.grid-table tr:hover td { background: #F8FAFD; }
 
-/* === Login background === */
+/* ── Login animation ─────────────────────────────────────────────── */
 @keyframes drift {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -20px) scale(1.02); }
-  66% { transform: translate(-20px, 15px) scale(0.98); }
+  33% { transform: translate(40px, -30px) scale(1.04); }
+  66% { transform: translate(-25px, 20px) scale(0.97); }
 }
-.login-orb {
-  animation: drift 20s ease-in-out infinite;
-  pointer-events: none;
-}
-.login-orb-2 {
-  animation: drift 25s ease-in-out infinite reverse;
-  pointer-events: none;
-}
+.login-orb   { animation: drift 22s ease-in-out infinite; pointer-events: none; }
+.login-orb-2 { animation: drift 30s ease-in-out infinite reverse; pointer-events: none; }
+.login-orb-3 { animation: drift 18s ease-in-out infinite 6s; pointer-events: none; }
 
-/* === Focus ring — accessible but refined === */
-input:focus-visible, select:focus-visible, button:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 1px;
+/* ── Focus ring ──────────────────────────────────────────────────── */
+input:focus-visible, select:focus-visible, button:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 input:focus:not(:focus-visible), select:focus:not(:focus-visible), button:focus:not(:focus-visible) {
   outline: none;
 }
 
-/* === Drag feedback === */
+/* ── Drag feedback ───────────────────────────────────────────────── */
 .drag-over {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--primary);
   outline-offset: -1px;
+  border-radius: 6px;
+  background: var(--primary-light) !important;
+}
+
+/* ── Skeleton loading ────────────────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #EEF2F8 25%, #E2E8F2 50%, #EEF2F8 75%);
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.6s infinite;
   border-radius: 6px;
 }

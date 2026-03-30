@@ -8,38 +8,45 @@ import {
   X, HelpCircle, CheckCircle2, XCircle, RefreshCw, History, FlaskConical
 } from "lucide-react";
 
-/* ── Function color system — auto-generated from function prefixes ── */
+/* ── Function color system ────────────────────────────────────────── */
 const COLOR_PALETTES = {
-  OP:       { bg: "#dbeafe", fg: "#1e40af" },
-  AVD:      { bg: "#fef3c7", fg: "#92400e" },
-  MOTT:     { bg: "#d1fae5", fg: "#065f46" },
-  AKUT:     { bg: "#ffedd5", fg: "#9a3412" },
-  JOUR_P:   { bg: "#fee2e2", fg: "#991b1b" },
-  JOUR_B:   { bg: "#ffe4e6", fg: "#9f1239" },
-  ADMIN:    { bg: "#f3e8ff", fg: "#6b21a8" },
-  LEDIG:    { bg: "transparent", fg: "#b0b8c5" },
-  SEMESTER: { bg: "#fef9c3", fg: "#a16207" },
+  OP:       { bg: "#EBF2FF", fg: "#1560D4", border: "#C7D9FF" },
+  AVD:      { bg: "#FFFBEB", fg: "#92400E", border: "#FDE68A" },
+  MOTT:     { bg: "#ECFDF5", fg: "#065F46", border: "#A7F3D0" },
+  AKUT:     { bg: "#FFF7ED", fg: "#9A3412", border: "#FDBA74" },
+  JOUR_P:   { bg: "#FEF2F2", fg: "#991B1B", border: "#FECACA" },
+  JOUR_B:   { bg: "#FFF1F2", fg: "#9F1239", border: "#FECDD3" },
+  ADMIN:    { bg: "#F5F3FF", fg: "#5B21B6", border: "#DDD6FE" },
+  LEDIG:    { bg: "transparent", fg: "#C5D0E4", border: "transparent" },
+  SEMESTER: { bg: "#FEFCE8", fg: "#A16207", border: "#FEF08A" },
+  BVC:      { bg: "#ECFDF5", fg: "#065F46", border: "#A7F3D0" },
+  MVC:      { bg: "#EFF6FF", fg: "#1E40AF", border: "#BFDBFE" },
+  LAB:      { bg: "#F5F3FF", fg: "#5B21B6", border: "#DDD6FE" },
+  TELEFON:  { bg: "#F0F9FF", fg: "#075985", border: "#BAE6FD" },
+  VIDEO:    { bg: "#F0FDF4", fg: "#14532D", border: "#BBF7D0" },
 };
 
 function getFuncStyle(funcId) {
-  if (!funcId || funcId === "LEDIG") return { bg: "transparent", fg: "#b0b8c5", label: "–" };
-  // Exact match first
-  if (COLOR_PALETTES[funcId]) return { ...COLOR_PALETTES[funcId], label: funcId.replace(/_/g, " ") };
-  // Prefix match (OP_CSK → OP, AVD_Hässleholm → AVD)
+  if (!funcId || funcId === "LEDIG") return { bg: "transparent", fg: "#C5D0E4", border: "transparent", label: "–" };
+  if (COLOR_PALETTES[funcId]) return { ...COLOR_PALETTES[funcId], label: funcId.replace(/_/g, "\u00A0") };
   const prefix = funcId.split("_")[0];
-  const palette = COLOR_PALETTES[prefix] || { bg: "#f1f5f9", fg: "#475569" };
-  // Shorten label: "OP_Hässleholm" → "OP Häss..", "AVD_CSK" → "AVD CSK"
+  const palette = COLOR_PALETTES[prefix] || { bg: "#F2F5FA", fg: "#4A5568", border: "#DDE4F0" };
   const suffix = funcId.slice(prefix.length + 1);
   const shortSuffix = suffix.length > 5 ? suffix.slice(0, 4) + "." : suffix;
-  return { ...palette, label: `${prefix} ${shortSuffix}` };
+  return { ...palette, label: shortSuffix ? `${prefix}\u00A0${shortSuffix}` : prefix };
 }
 
 const ROLES = {
-  "ÖL":       { color: "#2563eb", label: "ÖL" },
-  "SP":       { color: "#7c3aed", label: "SP" },
-  "ST_SEN":   { color: "#0d9488", label: "ST" },
-  "ST_TIDIG": { color: "#14b8a6", label: "ST" },
-  "UL":       { color: "#d97706", label: "UL" },
+  "ÖL":         { color: "#1560D4", label: "ÖL" },
+  "SP":         { color: "#7C3AED", label: "SP" },
+  "ST_SEN":     { color: "#059669", label: "ST+" },
+  "ST_TIDIG":   { color: "#0891B2", label: "ST" },
+  "UL":         { color: "#D97706", label: "UL" },
+  "DL":         { color: "#1560D4", label: "DL" },
+  "SSK":        { color: "#059669", label: "SSK" },
+  "USK":        { color: "#0891B2", label: "USK" },
+  "FT":         { color: "#7C3AED", label: "FT" },
+  "PSY":        { color: "#DC2626", label: "PSY" },
 };
 
 const WEEKDAYS = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
@@ -47,7 +54,7 @@ const WEEKDAYS = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
 /* ── Cell component ───────────────────────────────────────────────── */
 function Cell({ func, draggable, onDragStart, onDragOver, onDrop, onDragEnd, isDragging, isOver, onClick }) {
   const f = getFuncStyle(func);
-  const isEmpty = func === "LEDIG";
+  const isEmpty = !func || func === "LEDIG";
   return (
     <div
       draggable={draggable}
@@ -57,12 +64,16 @@ function Cell({ func, draggable, onDragStart, onDragOver, onDrop, onDragEnd, isD
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={`
-        schedule-cell rounded-[5px] px-1 py-[5px] text-[10px] font-semibold text-center select-none leading-none cursor-pointer
-        ${isEmpty ? "opacity-30" : ""}
+        schedule-cell rounded-md px-1 py-[5px] text-[10px] font-semibold text-center select-none leading-none cursor-pointer
         ${isDragging ? "opacity-40 scale-90" : ""}
         ${isOver ? "drag-over" : ""}
       `}
-      style={isEmpty ? {} : { background: f.bg, color: f.fg }}
+      style={{
+        background: f.bg,
+        color: f.fg,
+        border: `1px solid ${f.border || "transparent"}`,
+        opacity: isEmpty ? 0.35 : 1,
+      }}
     >
       {f.label}
     </div>
